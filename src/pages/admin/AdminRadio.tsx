@@ -19,8 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Radio,
   Music,
@@ -35,9 +36,20 @@ import {
   Play,
   Pause,
   Volume2,
+  Calendar,
+  TrendingUp,
+  Clock,
+  BarChart3,
+  Settings2,
+  Star,
+  Power,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
 
 const MOOD_OPTIONS = [
   { value: "", label: "No mood", icon: <Radio className="w-4 h-4" /> },
@@ -48,12 +60,30 @@ const MOOD_OPTIONS = [
   { value: "uplifting", label: "Uplifting", icon: <Sun className="w-4 h-4" />, color: "from-green-500 to-emerald-400" },
 ];
 
+const PRIORITY_OPTIONS = [
+  { value: 0, label: "Normal" },
+  { value: 1, label: "Low Priority" },
+  { value: 2, label: "Medium Priority" },
+  { value: 3, label: "High Priority" },
+  { value: 4, label: "Featured" },
+];
+
 interface Track {
   id: string;
   title: string;
   mood: string | null;
   audio_path: string;
-  release: { title: string } | null;
+  radio_enabled: boolean;
+  radio_priority: number;
+  last_played_at: string | null;
+  release: { title: string; artist: { name: string } } | null;
+}
+
+interface RadioStats {
+  totalTracks: number;
+  enabledTracks: number;
+  tracksPerStation: Record<string, number>;
+  recentPlays: number;
 }
 
 export default function AdminRadio() {
@@ -61,13 +91,16 @@ export default function AdminRadio() {
   const [search, setSearch] = useState("");
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
   const [bulkMood, setBulkMood] = useState<string>("");
+  const [bulkPriority, setBulkPriority] = useState<string>("");
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.7);
+  const [filterMood, setFilterMood] = useState<string>("all");
+  const [filterEnabled, setFilterEnabled] = useState<string>("all");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Fetch all tracks
+  // Fetch all tracks with radio fields
   const { data: tracks, isLoading } = useQuery({
     queryKey: ["admin-radio-tracks"],
     queryFn: async () => {
@@ -78,12 +111,33 @@ export default function AdminRadio() {
           title,
           mood,
           audio_path,
-          release:releases(title)
+          radio_enabled,
+          radio_priority,
+          last_played_at,
+          release:releases(title, artist:artists(name))
         `)
+        .order("radio_priority", { ascending: false })
         .order("title");
 
       if (error) throw error;
       return data as unknown as Track[];
+    },
+  });
+
+  // Fetch radio stats
+  const { data: radioStats } = useQuery({
+    queryKey: ["admin-radio-stats"],
+    queryFn: async () => {
+      const { data: statsData, error: statsError } = await supabase
+        .from("radio_stats")
+        .select("*")
+        .gte("played_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      if (statsError) throw statsError;
+
+      return {
+        recentPlays: statsData?.length || 0,
+      };
     },
   });
 
@@ -101,7 +155,6 @@ export default function AdminRadio() {
       return;
     }
 
-    // Get signed URL for audio
     const { data: signedData, error } = await supabase.storage
       .from("audio")
       .createSignedUrl(track.audio_path, 3600);
@@ -142,37 +195,59 @@ export default function AdminRadio() {
     }
   };
 
-  // Get mood stats
-  const moodStats = tracks?.reduce((acc, track) => {
-    const mood = track.mood || "unassigned";
-    acc[mood] = (acc[mood] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>) || {};
+  // Get stats
+  const stats: RadioStats = {
+    totalTracks: tracks?.length || 0,
+    enabledTracks: tracks?.filter((t) => t.radio_enabled).length || 0,
+    tracksPerStation: tracks?.reduce((acc, track) => {
+      const mood = track.mood || "unassigned";
+      if (track.radio_enabled) {
+        acc[mood] = (acc[mood] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>) || {},
+    recentPlays: radioStats?.recentPlays || 0,
+  };
 
-  // Update single track mood
-  const updateMoodMutation = useMutation({
-    mutationFn: async ({ trackId, mood }: { trackId: string; mood: string | null }) => {
+  // Update single track
+  const updateTrackMutation = useMutation({
+    mutationFn: async (updates: { trackId: string; mood?: string | null; radio_enabled?: boolean; radio_priority?: number }) => {
+      const updateData: any = {};
+      if (updates.mood !== undefined) updateData.mood = updates.mood;
+      if (updates.radio_enabled !== undefined) updateData.radio_enabled = updates.radio_enabled;
+      if (updates.radio_priority !== undefined) updateData.radio_priority = updates.radio_priority;
+
       const { error } = await supabase
         .from("tracks")
-        .update({ mood })
-        .eq("id", trackId);
+        .update(updateData)
+        .eq("id", updates.trackId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-radio-tracks"] });
-      toast.success("Track mood updated");
+      toast.success("Track updated");
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  // Bulk update moods
+  // Bulk update
   const bulkUpdateMutation = useMutation({
-    mutationFn: async ({ trackIds, mood }: { trackIds: string[]; mood: string | null }) => {
+    mutationFn: async ({ trackIds, mood, radio_enabled, radio_priority }: { 
+      trackIds: string[]; 
+      mood?: string | null; 
+      radio_enabled?: boolean;
+      radio_priority?: number;
+    }) => {
+      const updateData: any = {};
+      if (mood !== undefined) updateData.mood = mood;
+      if (radio_enabled !== undefined) updateData.radio_enabled = radio_enabled;
+      if (radio_priority !== undefined) updateData.radio_priority = radio_priority;
+
       const { error } = await supabase
         .from("tracks")
-        .update({ mood })
+        .update(updateData)
         .in("id", trackIds);
       if (error) throw error;
     },
@@ -180,6 +255,7 @@ export default function AdminRadio() {
       queryClient.invalidateQueries({ queryKey: ["admin-radio-tracks"] });
       setSelectedTracks([]);
       setBulkMood("");
+      setBulkPriority("");
       toast.success(`Updated ${selectedTracks.length} tracks`);
     },
     onError: (error) => {
@@ -187,14 +263,36 @@ export default function AdminRadio() {
     },
   });
 
-  const handleBulkUpdate = () => {
+  const handleBulkMoodUpdate = () => {
     if (selectedTracks.length === 0) {
       toast.error("Select tracks first");
       return;
     }
     bulkUpdateMutation.mutate({
       trackIds: selectedTracks,
-      mood: bulkMood === "none" ? null : bulkMood || null,
+      mood: bulkMood === "none" ? null : bulkMood || undefined,
+    });
+  };
+
+  const handleBulkPriorityUpdate = () => {
+    if (selectedTracks.length === 0) {
+      toast.error("Select tracks first");
+      return;
+    }
+    bulkUpdateMutation.mutate({
+      trackIds: selectedTracks,
+      radio_priority: parseInt(bulkPriority),
+    });
+  };
+
+  const handleBulkEnableDisable = (enabled: boolean) => {
+    if (selectedTracks.length === 0) {
+      toast.error("Select tracks first");
+      return;
+    }
+    bulkUpdateMutation.mutate({
+      trackIds: selectedTracks,
+      radio_enabled: enabled,
     });
   };
 
@@ -214,40 +312,133 @@ export default function AdminRadio() {
     }
   };
 
-  const filteredTracks = tracks?.filter(
-    (t) =>
+  const filteredTracks = tracks?.filter((t) => {
+    const matchesSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.release?.title.toLowerCase().includes(search.toLowerCase())
-  );
+      t.release?.title.toLowerCase().includes(search.toLowerCase()) ||
+      t.release?.artist.name.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesMood = filterMood === "all" || 
+      (filterMood === "unassigned" && !t.mood) ||
+      t.mood === filterMood;
+    
+    const matchesEnabled = filterEnabled === "all" ||
+      (filterEnabled === "enabled" && t.radio_enabled) ||
+      (filterEnabled === "disabled" && !t.radio_enabled);
+    
+    return matchesSearch && matchesMood && matchesEnabled;
+  });
+
+  const getPriorityBadge = (priority: number) => {
+    const option = PRIORITY_OPTIONS.find((p) => p.value === priority);
+    if (!option || priority === 0) return null;
+    
+    const colors: Record<number, string> = {
+      1: "bg-slate-500/20 text-slate-400",
+      2: "bg-blue-500/20 text-blue-400",
+      3: "bg-orange-500/20 text-orange-400",
+      4: "bg-yellow-500/20 text-yellow-400",
+    };
+    
+    return (
+      <Badge variant="outline" className={colors[priority]}>
+        {priority === 4 && <Star className="w-3 h-3 mr-1" />}
+        {option.label}
+      </Badge>
+    );
+  };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
-            <Radio className="w-8 h-8 text-primary" />
-            Radio Stations
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Manage track moods to populate radio stations
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+              <Radio className="w-8 h-8 text-primary" />
+              Radio Management
+            </h1>
+            <p className="mt-1 text-muted-foreground">
+              Control what plays on the radio, set priorities, and manage stations
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Music className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.totalTracks}</p>
+                  <p className="text-xs text-muted-foreground">Total Tracks</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <Power className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.enabledTracks}</p>
+                  <p className="text-xs text-muted-foreground">Radio Enabled</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-500/10">
+                  <BarChart3 className="w-5 h-5 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.recentPlays}</p>
+                  <p className="text-xs text-muted-foreground">Plays (24h)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <Star className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {tracks?.filter((t) => t.radio_priority >= 3).length || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">High Priority</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Station Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           {MOOD_OPTIONS.map((mood) => {
-            const count = mood.value ? moodStats[mood.value] || 0 : moodStats["unassigned"] || 0;
+            const count = mood.value 
+              ? stats.tracksPerStation[mood.value] || 0 
+              : stats.tracksPerStation["unassigned"] || 0;
             return (
               <motion.div
                 key={mood.value || "unassigned"}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-4 rounded-xl ${
+                className={`p-4 rounded-xl cursor-pointer transition-all ${
                   mood.color
                     ? `bg-gradient-to-br ${mood.color} text-white`
                     : "bg-muted"
-                }`}
+                } ${filterMood === (mood.value || "unassigned") ? "ring-2 ring-white/50 scale-105" : ""}`}
+                onClick={() => setFilterMood(mood.value || "unassigned")}
               >
                 <div className="flex items-center gap-2 mb-2">
                   {mood.icon}
@@ -255,7 +446,7 @@ export default function AdminRadio() {
                 </div>
                 <p className="text-2xl font-bold">{count}</p>
                 <p className={`text-xs ${mood.color ? "text-white/70" : "text-muted-foreground"}`}>
-                  tracks
+                  enabled tracks
                 </p>
               </motion.div>
             );
@@ -263,68 +454,142 @@ export default function AdminRadio() {
         </div>
 
         {/* Bulk Actions */}
-        {selectedTracks.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 p-4 rounded-xl bg-primary/10 border border-primary/20"
-          >
-            <span className="text-sm font-medium">
-              {selectedTracks.length} track{selectedTracks.length > 1 ? "s" : ""} selected
-            </span>
-            <Select value={bulkMood} onValueChange={setBulkMood}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Set mood..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">
-                  <div className="flex items-center gap-2">
-                    <Radio className="w-4 h-4" />
-                    <span>No mood</span>
-                  </div>
-                </SelectItem>
-                {MOOD_OPTIONS.filter((m) => m.value).map((mood) => (
-                  <SelectItem key={mood.value} value={mood.value}>
-                    <div className="flex items-center gap-2">
-                      {mood.icon}
-                      <span>{mood.label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleBulkUpdate}
-              disabled={!bulkMood || bulkUpdateMutation.isPending}
+        <AnimatePresence>
+          {selectedTracks.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-wrap items-center gap-4 p-4 rounded-xl bg-primary/10 border border-primary/20"
             >
-              {bulkUpdateMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              Apply
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setSelectedTracks([])}
-            >
-              Clear Selection
-            </Button>
-          </motion.div>
-        )}
+              <span className="text-sm font-medium">
+                {selectedTracks.length} track{selectedTracks.length > 1 ? "s" : ""} selected
+              </span>
+              
+              <div className="flex items-center gap-2">
+                <Select value={bulkMood} onValueChange={setBulkMood}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Set mood..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No mood</SelectItem>
+                    {MOOD_OPTIONS.filter((m) => m.value).map((mood) => (
+                      <SelectItem key={mood.value} value={mood.value}>
+                        <div className="flex items-center gap-2">
+                          {mood.icon}
+                          <span>{mood.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={handleBulkMoodUpdate}
+                  disabled={!bulkMood || bulkUpdateMutation.isPending}
+                >
+                  Apply
+                </Button>
+              </div>
 
-        {/* Search & Volume */}
-        <div className="flex items-center gap-6">
-          <div className="relative max-w-md flex-1">
+              <div className="flex items-center gap-2">
+                <Select value={bulkPriority} onValueChange={setBulkPriority}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Set priority..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((p) => (
+                      <SelectItem key={p.value} value={p.value.toString()}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={handleBulkPriorityUpdate}
+                  disabled={!bulkPriority || bulkUpdateMutation.isPending}
+                >
+                  Apply
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBulkEnableDisable(true)}
+                  disabled={bulkUpdateMutation.isPending}
+                  className="text-green-500 border-green-500/30"
+                >
+                  <Power className="w-4 h-4 mr-1" />
+                  Enable
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBulkEnableDisable(false)}
+                  disabled={bulkUpdateMutation.isPending}
+                  className="text-red-500 border-red-500/30"
+                >
+                  <Power className="w-4 h-4 mr-1" />
+                  Disable
+                </Button>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedTracks([])}
+              >
+                Clear
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search tracks..."
+              placeholder="Search tracks, releases, artists..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
-          <div className="flex items-center gap-2 min-w-[150px]">
+
+          <Select value={filterMood} onValueChange={setFilterMood}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Filter mood" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Moods</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {MOOD_OPTIONS.filter((m) => m.value).map((mood) => (
+                <SelectItem key={mood.value} value={mood.value}>
+                  <div className="flex items-center gap-2">
+                    {mood.icon}
+                    <span>{mood.label}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterEnabled} onValueChange={setFilterEnabled}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="enabled">Enabled</SelectItem>
+              <SelectItem value="disabled">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-2 ml-auto">
             <Volume2 className="w-4 h-4 text-muted-foreground" />
             <Slider
               value={[volume]}
@@ -336,7 +601,7 @@ export default function AdminRadio() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Track Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -360,20 +625,36 @@ export default function AdminRadio() {
                       onCheckedChange={toggleAllTracks}
                     />
                   </TableHead>
-                  <TableHead>Preview</TableHead>
+                  <TableHead className="w-12">Radio</TableHead>
+                  <TableHead className="w-14">Preview</TableHead>
                   <TableHead>Track</TableHead>
-                  <TableHead>Release</TableHead>
-                  <TableHead>Current Mood</TableHead>
-                  <TableHead>Set Mood</TableHead>
+                  <TableHead>Artist</TableHead>
+                  <TableHead>Mood</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Last Played</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTracks?.map((track) => (
-                  <TableRow key={track.id}>
+                  <TableRow 
+                    key={track.id}
+                    className={!track.radio_enabled ? "opacity-50" : ""}
+                  >
                     <TableCell>
                       <Checkbox
                         checked={selectedTracks.includes(track.id)}
                         onCheckedChange={() => toggleTrackSelection(track.id)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={track.radio_enabled}
+                        onCheckedChange={(checked) =>
+                          updateTrackMutation.mutate({
+                            trackId: track.id,
+                            radio_enabled: checked,
+                          })
+                        }
                       />
                     </TableCell>
                     <TableCell>
@@ -401,6 +682,9 @@ export default function AdminRadio() {
                         </div>
                         <div className="flex flex-col">
                           <span className="font-medium">{track.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {track.release?.title}
+                          </span>
                           {playingTrackId === track.id && (
                             <div className="w-24 h-1 bg-muted rounded-full mt-1 overflow-hidden">
                               <div 
@@ -412,28 +696,20 @@ export default function AdminRadio() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{track.release?.title || "—"}</TableCell>
-                    <TableCell>
-                      {track.mood ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary capitalize">
-                          {MOOD_OPTIONS.find((m) => m.value === track.mood)?.icon}
-                          {track.mood}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
+                    <TableCell className="text-muted-foreground">
+                      {track.release?.artist?.name || "—"}
                     </TableCell>
                     <TableCell>
                       <Select
                         value={track.mood || "none"}
                         onValueChange={(value) =>
-                          updateMoodMutation.mutate({
+                          updateTrackMutation.mutate({
                             trackId: track.id,
                             mood: value === "none" ? null : value,
                           })
                         }
                       >
-                        <SelectTrigger className="w-40">
+                        <SelectTrigger className="w-32">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -454,10 +730,51 @@ export default function AdminRadio() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={track.radio_priority.toString()}
+                          onValueChange={(value) =>
+                            updateTrackMutation.mutate({
+                              trackId: track.id,
+                              radio_priority: parseInt(value),
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-36">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PRIORITY_OPTIONS.map((p) => (
+                              <SelectItem key={p.value} value={p.value.toString()}>
+                                {p.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {getPriorityBadge(track.radio_priority)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {track.last_played_at ? (
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(track.last_played_at), "MMM d, h:mm a")}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Never</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {filteredTracks?.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Music className="w-12 h-12 mb-4 opacity-50" />
+              <p>No tracks found matching your filters</p>
+            </div>
           )}
         </motion.div>
       </div>

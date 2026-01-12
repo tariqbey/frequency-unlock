@@ -286,6 +286,79 @@ export type Database = {
           },
         ]
       }
+      radio_schedule: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          priority: number
+          starts_at: string
+          station_mood: string | null
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          priority?: number
+          starts_at: string
+          station_mood?: string | null
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          priority?: number
+          starts_at?: string
+          station_mood?: string | null
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_schedule_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radio_stats: {
+        Row: {
+          id: string
+          listener_count: number | null
+          played_at: string
+          station_mood: string | null
+          track_id: string
+        }
+        Insert: {
+          id?: string
+          listener_count?: number | null
+          played_at?: string
+          station_mood?: string | null
+          track_id: string
+        }
+        Update: {
+          id?: string
+          listener_count?: number | null
+          played_at?: string
+          station_mood?: string | null
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_stats_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       releases: {
         Row: {
           artist_id: string
@@ -418,7 +491,10 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           id: string
+          last_played_at: string | null
           mood: string | null
+          radio_enabled: boolean
+          radio_priority: number
           release_id: string
           title: string
           track_number: number
@@ -428,7 +504,10 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          last_played_at?: string | null
           mood?: string | null
+          radio_enabled?: boolean
+          radio_priority?: number
           release_id: string
           title: string
           track_number?: number
@@ -438,7 +517,10 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          last_played_at?: string | null
           mood?: string | null
+          radio_enabled?: boolean
+          radio_priority?: number
           release_id?: string
           title?: string
           track_number?: number
