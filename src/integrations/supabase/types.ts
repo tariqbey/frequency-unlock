@@ -415,6 +415,7 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           id: string
+          mood: string | null
           release_id: string
           title: string
           track_number: number
@@ -424,6 +425,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          mood?: string | null
           release_id: string
           title: string
           track_number?: number
@@ -433,6 +435,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          mood?: string | null
           release_id?: string
           title?: string
           track_number?: number
