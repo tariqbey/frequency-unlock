@@ -192,6 +192,7 @@ export default function AdminDashboard() {
           id,
           title,
           cover_art_url,
+          artist_id,
           artist:artists(name)
         `)
         .eq("is_published", true);
@@ -234,6 +235,7 @@ export default function AdminDashboard() {
         id: r.id,
         title: r.title,
         coverArt: r.cover_art_url,
+        artistId: r.artist_id,
         artist: (r.artist as any)?.name || "Unknown Artist",
         plays: playsByRelease[r.id] || 0,
         donations: donationsByRelease[r.id] || 0,
@@ -249,7 +251,99 @@ export default function AdminDashboard() {
         .sort((a, b) => b.donations - a.donations)
         .slice(0, 5);
 
-      return { topByPlays, topByDonations };
+      return { topByPlays, topByDonations, allReleases: enrichedReleases };
+    },
+  });
+
+  // Top artists by plays and earnings
+  const { data: topArtists } = useQuery({
+    queryKey: ["admin-top-artists"],
+    queryFn: async () => {
+      // Get all artists
+      const { data: artists, error: artistsError } = await supabase
+        .from("artists")
+        .select("id, name, image_url");
+
+      if (artistsError) throw artistsError;
+
+      // Get all releases with artist info
+      const { data: releases, error: releasesError } = await supabase
+        .from("releases")
+        .select("id, artist_id")
+        .eq("is_published", true);
+
+      if (releasesError) throw releasesError;
+
+      // Get play counts per release
+      const { data: playEvents, error: playsError } = await supabase
+        .from("events")
+        .select("release_id")
+        .eq("event_type", "play_start")
+        .not("release_id", "is", null);
+
+      if (playsError) throw playsError;
+
+      // Get donation totals per release
+      const { data: donations, error: donationsError } = await supabase
+        .from("donations")
+        .select("release_id, amount_cents")
+        .eq("status", "paid");
+
+      if (donationsError) throw donationsError;
+
+      // Map release to artist
+      const releaseToArtist: Record<string, string> = {};
+      releases?.forEach((r) => {
+        releaseToArtist[r.id] = r.artist_id;
+      });
+
+      // Aggregate plays by artist
+      const playsByArtist: Record<string, number> = {};
+      playEvents?.forEach((e) => {
+        if (e.release_id) {
+          const artistId = releaseToArtist[e.release_id];
+          if (artistId) {
+            playsByArtist[artistId] = (playsByArtist[artistId] || 0) + 1;
+          }
+        }
+      });
+
+      // Aggregate donations by artist
+      const donationsByArtist: Record<string, number> = {};
+      donations?.forEach((d) => {
+        const artistId = releaseToArtist[d.release_id];
+        if (artistId) {
+          donationsByArtist[artistId] = (donationsByArtist[artistId] || 0) + d.amount_cents;
+        }
+      });
+
+      // Count releases per artist
+      const releasesByArtist: Record<string, number> = {};
+      releases?.forEach((r) => {
+        releasesByArtist[r.artist_id] = (releasesByArtist[r.artist_id] || 0) + 1;
+      });
+
+      // Combine data
+      const enrichedArtists = artists?.map((a) => ({
+        id: a.id,
+        name: a.name,
+        imageUrl: a.image_url,
+        plays: playsByArtist[a.id] || 0,
+        earnings: donationsByArtist[a.id] || 0,
+        releases: releasesByArtist[a.id] || 0,
+      })) || [];
+
+      // Sort by plays
+      const topByPlays = [...enrichedArtists]
+        .sort((a, b) => b.plays - a.plays)
+        .slice(0, 5);
+
+      // Sort by earnings
+      const topByEarnings = [...enrichedArtists]
+        .sort((a, b) => b.earnings - a.earnings)
+        .slice(0, 5);
+
+      return { topByPlays, topByEarnings };
     },
   });
 
@@ -497,120 +591,238 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        {/* Top Releases Leaderboard */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="glass-panel p-6 rounded-xl"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <h2 className="font-display text-lg font-semibold">
-              Top Releases
-            </h2>
-          </div>
-          <Tabs defaultValue="plays" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="plays" className="gap-2">
-                <PlayCircle className="w-4 h-4" />
-                Most Played
-              </TabsTrigger>
-              <TabsTrigger value="donations" className="gap-2">
-                <DollarSign className="w-4 h-4" />
-                Top Earning
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="plays" className="space-y-3">
-              {topReleases?.topByPlays?.length ? (
-                topReleases.topByPlays.map((release, index) => (
-                  <div
-                    key={release.id}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      index === 0 ? "bg-yellow-500 text-yellow-950" :
-                      index === 1 ? "bg-slate-300 text-slate-800" :
-                      index === 2 ? "bg-amber-600 text-amber-100" :
-                      "bg-muted-foreground/20 text-muted-foreground"
-                    }`}>
-                      {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+        {/* Leaderboards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Releases Leaderboard */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="glass-panel p-6 rounded-xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              <h2 className="font-display text-lg font-semibold">
+                Top Releases
+              </h2>
+            </div>
+            <Tabs defaultValue="plays" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="plays" className="gap-2">
+                  <PlayCircle className="w-4 h-4" />
+                  Most Played
+                </TabsTrigger>
+                <TabsTrigger value="donations" className="gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Top Earning
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="plays" className="space-y-3">
+                {topReleases?.topByPlays?.length ? (
+                  topReleases.topByPlays.map((release, index) => (
+                    <div
+                      key={release.id}
+                      className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        index === 0 ? "bg-yellow-500 text-yellow-950" :
+                        index === 1 ? "bg-slate-300 text-slate-800" :
+                        index === 2 ? "bg-amber-600 text-amber-100" :
+                        "bg-muted-foreground/20 text-muted-foreground"
+                      }`}>
+                        {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                        {release.coverArt ? (
+                          <img 
+                            src={release.coverArt} 
+                            alt={release.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Disc3 className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{release.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-primary">{release.plays.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">plays</p>
+                      </div>
                     </div>
-                    <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-                      {release.coverArt ? (
-                        <img 
-                          src={release.coverArt} 
-                          alt={release.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Disc3 className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No play data yet
+                  </p>
+                )}
+              </TabsContent>
+              <TabsContent value="donations" className="space-y-3">
+                {topReleases?.topByDonations?.filter(r => r.donations > 0).length ? (
+                  topReleases.topByDonations.filter(r => r.donations > 0).map((release, index) => (
+                    <div
+                      key={release.id}
+                      className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        index === 0 ? "bg-yellow-500 text-yellow-950" :
+                        index === 1 ? "bg-slate-300 text-slate-800" :
+                        index === 2 ? "bg-amber-600 text-amber-100" :
+                        "bg-muted-foreground/20 text-muted-foreground"
+                      }`}>
+                        {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                        {release.coverArt ? (
+                          <img 
+                            src={release.coverArt} 
+                            alt={release.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Disc3 className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{release.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-emerald-500">${(release.donations / 100).toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground">earned</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{release.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No donation data yet
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+
+          {/* Top Artists Leaderboard */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.48 }}
+            className="glass-panel p-6 rounded-xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Star className="w-5 h-5 text-purple-500" />
+              <h2 className="font-display text-lg font-semibold">
+                Top Artists
+              </h2>
+            </div>
+            <Tabs defaultValue="plays" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="plays" className="gap-2">
+                  <PlayCircle className="w-4 h-4" />
+                  Most Played
+                </TabsTrigger>
+                <TabsTrigger value="earnings" className="gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Top Earning
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="plays" className="space-y-3">
+                {topArtists?.topByPlays?.filter(a => a.plays > 0).length ? (
+                  topArtists.topByPlays.filter(a => a.plays > 0).map((artist, index) => (
+                    <div
+                      key={artist.id}
+                      className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        index === 0 ? "bg-yellow-500 text-yellow-950" :
+                        index === 1 ? "bg-slate-300 text-slate-800" :
+                        index === 2 ? "bg-amber-600 text-amber-100" :
+                        "bg-muted-foreground/20 text-muted-foreground"
+                      }`}>
+                        {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                        {artist.imageUrl ? (
+                          <img 
+                            src={artist.imageUrl} 
+                            alt={artist.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                            <Mic2 className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{artist.name}</p>
+                        <p className="text-xs text-muted-foreground">{artist.releases} release{artist.releases !== 1 ? 's' : ''}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-primary">{artist.plays.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">plays</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-primary">{release.plays.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">plays</p>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No play data yet
+                  </p>
+                )}
+              </TabsContent>
+              <TabsContent value="earnings" className="space-y-3">
+                {topArtists?.topByEarnings?.filter(a => a.earnings > 0).length ? (
+                  topArtists.topByEarnings.filter(a => a.earnings > 0).map((artist, index) => (
+                    <div
+                      key={artist.id}
+                      className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        index === 0 ? "bg-yellow-500 text-yellow-950" :
+                        index === 1 ? "bg-slate-300 text-slate-800" :
+                        index === 2 ? "bg-amber-600 text-amber-100" :
+                        "bg-muted-foreground/20 text-muted-foreground"
+                      }`}>
+                        {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                        {artist.imageUrl ? (
+                          <img 
+                            src={artist.imageUrl} 
+                            alt={artist.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-500">
+                            <Mic2 className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{artist.name}</p>
+                        <p className="text-xs text-muted-foreground">{artist.releases} release{artist.releases !== 1 ? 's' : ''}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-emerald-500">${(artist.earnings / 100).toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground">earned</p>
+                      </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No play data yet
-                </p>
-              )}
-            </TabsContent>
-            <TabsContent value="donations" className="space-y-3">
-              {topReleases?.topByDonations?.filter(r => r.donations > 0).length ? (
-                topReleases.topByDonations.filter(r => r.donations > 0).map((release, index) => (
-                  <div
-                    key={release.id}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      index === 0 ? "bg-yellow-500 text-yellow-950" :
-                      index === 1 ? "bg-slate-300 text-slate-800" :
-                      index === 2 ? "bg-amber-600 text-amber-100" :
-                      "bg-muted-foreground/20 text-muted-foreground"
-                    }`}>
-                      {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
-                    </div>
-                    <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-                      {release.coverArt ? (
-                        <img 
-                          src={release.coverArt} 
-                          alt={release.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Disc3 className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{release.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-emerald-500">${(release.donations / 100).toFixed(0)}</p>
-                      <p className="text-xs text-muted-foreground">earned</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No donation data yet
-                </p>
-              )}
-            </TabsContent>
-          </Tabs>
-        </motion.div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No earnings data yet
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        </div>
 
         {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
