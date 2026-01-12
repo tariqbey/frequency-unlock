@@ -4,6 +4,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { GeoDistributionMap } from "@/components/admin/GeoDistributionMap";
+import { UserEngagementMetrics } from "@/components/admin/UserEngagementMetrics";
 import { 
   Disc3, Music, DollarSign, Users, Radio, Mic2, 
   PlayCircle, Download, Star, TrendingUp, Trophy, Crown
@@ -466,6 +467,9 @@ export default function AdminDashboard() {
             delay={0.3}
           />
         </div>
+
+        {/* User Engagement Metrics */}
+        <UserEngagementMetrics />
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
