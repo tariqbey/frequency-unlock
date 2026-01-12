@@ -14,6 +14,7 @@ import {
   UserCircle,
   LogOut,
   ChevronLeft,
+  Radio,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/admin/artists", icon: UserCircle, label: "Artists" },
   { href: "/admin/releases", icon: Disc3, label: "Releases" },
   { href: "/admin/tracks", icon: Music, label: "Tracks" },
+  { href: "/admin/radio", icon: Radio, label: "Radio" },
   { href: "/admin/donations", icon: DollarSign, label: "Donations" },
   { href: "/admin/users", icon: Users, label: "Users" },
 ];

@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminArtists from "./pages/admin/AdminArtists";
 import AdminReleases from "./pages/admin/AdminReleases";
 import AdminTracks from "./pages/admin/AdminTracks";
+import AdminRadio from "./pages/admin/AdminRadio";
 import AdminDonations from "./pages/admin/AdminDonations";
 import AdminUsers from "./pages/admin/AdminUsers";
 import ArtistDashboard from "./pages/artist/ArtistDashboard";
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/admin/artists" element={<AdminRoute><AdminArtists /></AdminRoute>} />
               <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />
               <Route path="/admin/tracks" element={<AdminRoute><AdminTracks /></AdminRoute>} />
+              <Route path="/admin/radio" element={<AdminRoute><AdminRadio /></AdminRoute>} />
               <Route path="/admin/donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
               <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
               <Route path="/artist" element={<ArtistRoute><ArtistDashboard /></ArtistRoute>} />
