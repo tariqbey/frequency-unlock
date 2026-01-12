@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Track {
   id: string;
@@ -38,6 +39,96 @@ interface PlayerContextType {
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
+
+// Get user's country code from timezone or IP
+async function getUserCountryCode(): Promise<string | null> {
+  try {
+    // Try to get country from timezone
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezoneToCountry: Record<string, string> = {
+      "America/New_York": "USA",
+      "America/Los_Angeles": "USA",
+      "America/Chicago": "USA",
+      "America/Denver": "USA",
+      "America/Phoenix": "USA",
+      "America/Toronto": "CAN",
+      "America/Vancouver": "CAN",
+      "Europe/London": "GBR",
+      "Europe/Paris": "FRA",
+      "Europe/Berlin": "DEU",
+      "Europe/Madrid": "ESP",
+      "Europe/Rome": "ITA",
+      "Europe/Amsterdam": "NLD",
+      "Europe/Stockholm": "SWE",
+      "Europe/Oslo": "NOR",
+      "Europe/Copenhagen": "DNK",
+      "Europe/Helsinki": "FIN",
+      "Europe/Warsaw": "POL",
+      "Europe/Moscow": "RUS",
+      "Asia/Tokyo": "JPN",
+      "Asia/Shanghai": "CHN",
+      "Asia/Hong_Kong": "CHN",
+      "Asia/Seoul": "KOR",
+      "Asia/Singapore": "SGP",
+      "Asia/Bangkok": "THA",
+      "Asia/Jakarta": "IDN",
+      "Asia/Manila": "PHL",
+      "Asia/Kolkata": "IND",
+      "Asia/Dubai": "ARE",
+      "Australia/Sydney": "AUS",
+      "Australia/Melbourne": "AUS",
+      "Australia/Perth": "AUS",
+      "Pacific/Auckland": "NZL",
+      "America/Sao_Paulo": "BRA",
+      "America/Mexico_City": "MEX",
+      "America/Argentina/Buenos_Aires": "ARG",
+      "America/Bogota": "COL",
+      "America/Santiago": "CHL",
+      "America/Lima": "PER",
+      "Africa/Johannesburg": "ZAF",
+      "Africa/Lagos": "NGA",
+      "Africa/Cairo": "EGY",
+      "Europe/Istanbul": "TUR",
+      "Asia/Riyadh": "SAU",
+      "Asia/Jerusalem": "ISR",
+      "Asia/Ho_Chi_Minh": "VNM",
+      "Asia/Kuala_Lumpur": "MYS",
+      "Europe/Dublin": "IRL",
+      "Europe/Lisbon": "PRT",
+      "Europe/Brussels": "BEL",
+      "Europe/Vienna": "AUT",
+      "Europe/Zurich": "CHE",
+      "Europe/Prague": "CZE",
+      "Europe/Athens": "GRC",
+      "Europe/Budapest": "HUN",
+      "Europe/Bucharest": "ROU",
+      "Europe/Kiev": "UKR",
+    };
+
+    return timezoneToCountry[timezone] || null;
+  } catch {
+    return null;
+  }
+}
+
+// Log play event with location
+async function logPlayEvent(track: Track, userId: string | null) {
+  const countryCode = await getUserCountryCode();
+  
+  await supabase.from("events").insert({
+    event_type: "play_start",
+    track_id: track.id,
+    release_id: track.release.id,
+    user_id: userId,
+    metadata: {
+      country_code: countryCode,
+      user_id: userId,
+      track_title: track.title,
+      release_title: track.release.title,
+      artist_name: track.release.artist.name,
+    },
+  });
+}
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -92,6 +183,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     setCurrentTrack(track);
     if (newQueue) setQueue(newQueue);
+
+    // Log play event with location
+    const { data: { user } } = await supabase.auth.getUser();
+    logPlayEvent(track, user?.id || null);
 
     // For now, use a placeholder - in production this would be a signed URL
     // We'll create an edge function for this
