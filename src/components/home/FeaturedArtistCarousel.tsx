@@ -10,6 +10,7 @@ interface FeaturedArtist {
   id: string;
   name: string;
   image_url: string | null;
+  is_featured: boolean;
   latestRelease: {
     id: string;
     title: string;
@@ -30,10 +31,11 @@ export function FeaturedArtistCarousel() {
   const { data: artists, isLoading } = useQuery({
     queryKey: ["featured-artists"],
     queryFn: async () => {
-      // Get artists with published releases
+      // Get featured artists or fallback to artists with published releases
       const { data: artistsData, error: artistsError } = await supabase
         .from("artists")
-        .select("id, name, image_url")
+        .select("id, name, image_url, is_featured")
+        .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -50,11 +52,18 @@ export function FeaturedArtistCarousel() {
 
       if (releasesError) throw releasesError;
 
-      // Map artists with their latest release
-      return artistsData?.map((artist) => ({
+      // Map artists with their latest release, prioritize featured artists
+      const result = artistsData?.map((artist) => ({
         ...artist,
         latestRelease: releases?.find((r) => r.artist_id === artist.id) || null,
       })) as FeaturedArtist[];
+
+      // Sort: featured with releases first, then featured without, then others with releases
+      return result.sort((a, b) => {
+        const aScore = (a.is_featured ? 2 : 0) + (a.latestRelease ? 1 : 0);
+        const bScore = (b.is_featured ? 2 : 0) + (b.latestRelease ? 1 : 0);
+        return bScore - aScore;
+      });
     },
   });
 

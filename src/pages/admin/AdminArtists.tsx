@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +22,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/admin/FileUpload";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, User, Loader2, Search, Disc3 } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Loader2, Search, Disc3, Star } from "lucide-react";
 import { format } from "date-fns";
 
 interface Artist {
@@ -31,6 +33,7 @@ interface Artist {
   name: string;
   bio: string | null;
   image_url: string | null;
+  is_featured: boolean;
   created_at: string;
   releases_count?: number;
 }
@@ -39,12 +42,14 @@ interface ArtistForm {
   name: string;
   bio: string;
   image_url: string;
+  is_featured: boolean;
 }
 
 const initialForm: ArtistForm = {
   name: "",
   bio: "",
   image_url: "",
+  is_featured: false,
 };
 
 export default function AdminArtists() {
@@ -65,6 +70,7 @@ export default function AdminArtists() {
           name,
           bio,
           image_url,
+          is_featured,
           created_at,
           releases:releases(id)
         `)
@@ -88,6 +94,7 @@ export default function AdminArtists() {
             name: data.name,
             bio: data.bio || null,
             image_url: data.image_url || null,
+            is_featured: data.is_featured,
           })
           .eq("id", editingId);
         if (error) throw error;
@@ -96,6 +103,7 @@ export default function AdminArtists() {
           name: data.name,
           bio: data.bio || null,
           image_url: data.image_url || null,
+          is_featured: data.is_featured,
         });
         if (error) throw error;
       }
@@ -133,6 +141,7 @@ export default function AdminArtists() {
       name: artist.name,
       bio: artist.bio || "",
       image_url: artist.image_url || "",
+      is_featured: artist.is_featured,
     });
     setDialogOpen(true);
   };
@@ -192,25 +201,14 @@ export default function AdminArtists() {
                 </div>
 
                 <div>
-                  <Label htmlFor="image_url">Profile Image URL</Label>
-                  <Input
-                    id="image_url"
-                    value={form.image_url}
-                    onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                    placeholder="https://..."
+                  <Label>Profile Image</Label>
+                  <FileUpload
+                    bucket="artwork"
+                    currentUrl={form.image_url}
+                    onUpload={(url) => setForm({ ...form, image_url: url })}
+                    onRemove={() => setForm({ ...form, image_url: "" })}
+                    maxSizeMB={5}
                   />
-                  {form.image_url && (
-                    <div className="mt-2">
-                      <img
-                        src={form.image_url}
-                        alt="Preview"
-                        className="w-20 h-20 rounded-full object-cover border border-border"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 <div>
@@ -221,6 +219,21 @@ export default function AdminArtists() {
                     onChange={(e) => setForm({ ...form, bio: e.target.value })}
                     placeholder="Tell the artist's story..."
                     rows={5}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
+                  <div className="flex items-center gap-3">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    <div>
+                      <Label htmlFor="is_featured" className="cursor-pointer">Featured Artist</Label>
+                      <p className="text-xs text-muted-foreground">Show in homepage carousel</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="is_featured"
+                    checked={form.is_featured}
+                    onCheckedChange={(checked) => setForm({ ...form, is_featured: checked })}
                   />
                 </div>
 
@@ -278,6 +291,7 @@ export default function AdminArtists() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Artist</TableHead>
+                  <TableHead>Featured</TableHead>
                   <TableHead>Bio</TableHead>
                   <TableHead>Releases</TableHead>
                   <TableHead>Created</TableHead>
@@ -300,8 +314,20 @@ export default function AdminArtists() {
                             <User className="w-5 h-5 text-muted-foreground" />
                           </div>
                         )}
-                        <span className="font-medium">{artist.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{artist.name}</span>
+                        </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {artist.is_featured ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-600">
+                          <Star className="w-3 h-3" />
+                          Featured
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {artist.bio ? (

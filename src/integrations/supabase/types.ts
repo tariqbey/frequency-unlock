@@ -50,6 +50,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          is_featured: boolean
           name: string
         }
         Insert: {
@@ -57,6 +58,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          is_featured?: boolean
           name: string
         }
         Update: {
@@ -64,6 +66,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          is_featured?: boolean
           name?: string
         }
         Relationships: []
