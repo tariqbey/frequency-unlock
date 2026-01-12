@@ -22,6 +22,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
+import { VoteButtons } from "@/components/forum/VoteButtons";
 
 interface Thread {
   id: string;
@@ -197,33 +198,46 @@ export default function ForumThread() {
           {/* Thread */}
           <Card className="border-border/50 bg-card/50 backdrop-blur">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2 flex-wrap mb-4">
-                {thread.pinned && (
-                  <Badge variant="secondary" className="gap-1">
-                    <Pin className="w-3 h-3" />
-                    Pinned
-                  </Badge>
-                )}
-                {thread.forums && (
-                  <Badge variant="outline">{thread.forums.title}</Badge>
-                )}
-              </div>
-
-              <h1 className="text-2xl font-bold mb-4">{thread.title}</h1>
-
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  <span>{thread.profiles?.display_name || "Anonymous"}</span>
+              <div className="flex gap-4">
+                {/* Vote buttons */}
+                <div className="hidden sm:block">
+                  <VoteButtons threadId={thread.id} orientation="vertical" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  <span>{timeAgo}</span>
-                </div>
-              </div>
 
-              <div className="prose prose-invert max-w-none">
-                <p className="whitespace-pre-wrap text-foreground/90">{thread.body}</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap mb-4">
+                    {thread.pinned && (
+                      <Badge variant="secondary" className="gap-1">
+                        <Pin className="w-3 h-3" />
+                        Pinned
+                      </Badge>
+                    )}
+                    {thread.forums && (
+                      <Badge variant="outline">{thread.forums.title}</Badge>
+                    )}
+                  </div>
+
+                  <h1 className="text-2xl font-bold mb-4">{thread.title}</h1>
+
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+                    <div className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      <span>{thread.profiles?.display_name || "Anonymous"}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{timeAgo}</span>
+                    </div>
+                    {/* Mobile vote buttons */}
+                    <div className="sm:hidden">
+                      <VoteButtons threadId={thread.id} orientation="horizontal" size="sm" />
+                    </div>
+                  </div>
+
+                  <div className="prose prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap text-foreground/90">{thread.body}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -290,37 +304,44 @@ export default function ForumThread() {
                   >
                     <Card className="border-border/50 bg-card/30">
                       <CardContent className="py-4">
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex gap-3">
+                          {/* Vote buttons for comment */}
+                          <VoteButtons commentId={comment.id} orientation="vertical" size="sm" />
+
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                <User className="w-4 h-4 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {comment.profiles?.display_name || "Anonymous"}
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                    <User className="w-4 h-4 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">
+                                      {comment.profiles?.display_name || "Anonymous"}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatDistanceToNow(new Date(comment.created_at), {
+                                        addSuffix: true,
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-foreground/90 whitespace-pre-wrap">
+                                  {comment.body}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(comment.created_at), {
-                                    addSuffix: true,
-                                  })}
-                                </p>
                               </div>
+                              {user?.id === comment.user_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => deleteComment.mutate(comment.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
-                            <p className="text-sm text-foreground/90 whitespace-pre-wrap pl-11">
-                              {comment.body}
-                            </p>
                           </div>
-                          {user?.id === comment.user_id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => deleteComment.mutate(comment.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
                         </div>
                       </CardContent>
                     </Card>
