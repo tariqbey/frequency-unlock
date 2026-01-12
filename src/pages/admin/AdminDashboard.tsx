@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { StatsCard } from "@/components/admin/StatsCard";
-import { Disc3, Music, DollarSign, Users, Radio, Mic2, Sparkles, Zap, Moon, Heart, Cloud } from "lucide-react";
+import { 
+  Disc3, Music, DollarSign, Users, Radio, Mic2, 
+  PlayCircle, Download, Star, TrendingUp 
+} from "lucide-react";
 import { motion } from "framer-motion";
 import {
   AreaChart,
@@ -16,6 +19,8 @@ import {
   Pie,
   Cell,
   Legend,
+  BarChart,
+  Bar,
 } from "recharts";
 
 const MOOD_CONFIG = [
@@ -30,24 +35,79 @@ const MOOD_CONFIG = [
 ];
 
 export default function AdminDashboard() {
-  // Fetch stats
+  // Fetch stats with trends
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [releasesRes, tracksRes, donationsRes, usersRes, artistsRes, eventsRes, moodTracksRes] = await Promise.all([
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const [
+        releasesRes, 
+        tracksRes, 
+        donationsRes, 
+        donationsPrevRes,
+        usersRes, 
+        artistsRes,
+        featuredArtistsRes,
+        eventsRes,
+        eventsPrevRes,
+        moodTracksRes,
+        recentUsersRes,
+        recentReleasesRes,
+      ] = await Promise.all([
         supabase.from("releases").select("id", { count: "exact", head: true }),
         supabase.from("tracks").select("id", { count: "exact", head: true }),
-        supabase.from("donations").select("amount_cents").eq("status", "paid"),
+        supabase.from("donations").select("amount_cents, created_at").eq("status", "paid").gte("created_at", thirtyDaysAgo.toISOString()),
+        supabase.from("donations").select("amount_cents").eq("status", "paid").gte("created_at", sixtyDaysAgo.toISOString()).lt("created_at", thirtyDaysAgo.toISOString()),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("artists").select("id", { count: "exact", head: true }),
-        supabase
-          .from("events")
-          .select("created_at, event_type")
-          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from("artists").select("id", { count: "exact", head: true }).eq("is_featured", true),
+        supabase.from("events").select("created_at, event_type").gte("created_at", thirtyDaysAgo.toISOString()),
+        supabase.from("events").select("event_type").gte("created_at", sixtyDaysAgo.toISOString()).lt("created_at", thirtyDaysAgo.toISOString()),
         supabase.from("tracks").select("mood"),
+        supabase.from("profiles").select("created_at").gte("created_at", sevenDaysAgo.toISOString()),
+        supabase.from("releases").select("created_at").gte("created_at", sevenDaysAgo.toISOString()),
       ]);
 
-      const totalRevenue = donationsRes.data?.reduce((sum, d) => sum + d.amount_cents, 0) || 0;
+      // Calculate revenues
+      const currentRevenue = donationsRes.data?.reduce((sum, d) => sum + d.amount_cents, 0) || 0;
+      const prevRevenue = donationsPrevRes.data?.reduce((sum, d) => sum + d.amount_cents, 0) || 0;
+      const revenueChange = prevRevenue > 0 ? Math.round(((currentRevenue - prevRevenue) / prevRevenue) * 100) : 0;
+
+      // Calculate plays
+      const currentPlays = eventsRes.data?.filter(e => e.event_type === "play_start").length || 0;
+      const prevPlays = eventsPrevRes.data?.filter(e => e.event_type === "play_start").length || 0;
+      const playsChange = prevPlays > 0 ? Math.round(((currentPlays - prevPlays) / prevPlays) * 100) : 0;
+
+      // Calculate downloads
+      const currentDownloads = eventsRes.data?.filter(e => e.event_type === "download").length || 0;
+      const prevDownloads = eventsPrevRes.data?.filter(e => e.event_type === "download").length || 0;
+      const downloadsChange = prevDownloads > 0 ? Math.round(((currentDownloads - prevDownloads) / prevDownloads) * 100) : 0;
+
+      // Generate sparkline data (last 7 days of revenue)
+      const revenueByDay: Record<string, number> = {};
+      donationsRes.data?.forEach(d => {
+        const day = new Date(d.created_at).toDateString();
+        revenueByDay[day] = (revenueByDay[day] || 0) + d.amount_cents;
+      });
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+        return revenueByDay[date.toDateString()] || 0;
+      });
+
+      // Generate plays sparkline
+      const playsByDay: Record<string, number> = {};
+      eventsRes.data?.filter(e => e.event_type === "play_start").forEach(e => {
+        const day = new Date(e.created_at).toDateString();
+        playsByDay[day] = (playsByDay[day] || 0) + 1;
+      });
+      const playsLast7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+        return playsByDay[date.toDateString()] || 0;
+      });
 
       // Calculate mood distribution
       const moodCounts = (moodTracksRes.data || []).reduce((acc: Record<string, number>, track) => {
@@ -62,14 +122,39 @@ export default function AdminDashboard() {
         color: m.color,
       })).filter((m) => m.value > 0);
 
+      // Top release types
+      const publishedReleasesRes = await supabase.from("releases").select("type").eq("is_published", true);
+      const releaseTypeCounts = (publishedReleasesRes.data || []).reduce((acc: Record<string, number>, r) => {
+        acc[r.type] = (acc[r.type] || 0) + 1;
+        return acc;
+      }, {});
+
       return {
         releases: releasesRes.count || 0,
         tracks: tracksRes.count || 0,
-        revenue: totalRevenue,
+        revenue: currentRevenue,
+        revenueChange,
+        revenueTrend: revenueChange >= 0 ? "positive" : "negative",
+        revenueSparkline: last7Days,
         users: usersRes.count || 0,
+        newUsers: recentUsersRes.data?.length || 0,
         artists: artistsRes.count || 0,
+        featuredArtists: featuredArtistsRes.count || 0,
+        plays: currentPlays,
+        playsChange,
+        playsTrend: playsChange >= 0 ? "positive" : "negative",
+        playsSparkline: playsLast7Days,
+        downloads: currentDownloads,
+        downloadsChange,
+        downloadsTrend: downloadsChange >= 0 ? "positive" : "negative",
+        newReleases: recentReleasesRes.data?.length || 0,
         recentEvents: eventsRes.data || [],
         moodDistribution,
+        releaseTypes: [
+          { name: "Albums", value: releaseTypeCounts["album"] || 0 },
+          { name: "EPs", value: releaseTypeCounts["ep"] || 0 },
+          { name: "Singles", value: releaseTypeCounts["single"] || 0 },
+        ],
       };
     },
   });
@@ -126,94 +211,177 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <StatsCard
-            title="Total Artists"
-            value={stats?.artists || 0}
-            icon={<Mic2 className="w-6 h-6" />}
-            delay={0}
-          />
-          <StatsCard
-            title="Total Releases"
-            value={stats?.releases || 0}
-            icon={<Disc3 className="w-6 h-6" />}
-            delay={0.05}
-          />
-          <StatsCard
-            title="Total Tracks"
-            value={stats?.tracks || 0}
-            icon={<Music className="w-6 h-6" />}
-            delay={0.1}
-          />
+        {/* Primary Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Total Revenue"
-            value={`$${((stats?.revenue || 0) / 100).toFixed(2)}`}
-            change="All time"
-            changeType="neutral"
+            value={`$${((stats?.revenue || 0) / 100).toFixed(0)}`}
+            change="Last 30 days"
+            changeType={stats?.revenueTrend as "positive" | "negative" | "neutral"}
+            changeValue={stats?.revenueChange}
             icon={<DollarSign className="w-6 h-6" />}
-            delay={0.15}
+            delay={0}
+            sparklineData={stats?.revenueSparkline}
+            gradient="from-emerald-600 to-teal-500"
           />
           <StatsCard
-            title="Total Users"
-            value={stats?.users || 0}
-            icon={<Users className="w-6 h-6" />}
-            delay={0.2}
+            title="Total Plays"
+            value={stats?.plays?.toLocaleString() || 0}
+            change="Last 30 days"
+            changeType={stats?.playsTrend as "positive" | "negative" | "neutral"}
+            changeValue={stats?.playsChange}
+            icon={<PlayCircle className="w-6 h-6" />}
+            delay={0.05}
+            sparklineData={stats?.playsSparkline}
+            gradient="from-violet-600 to-purple-500"
+          />
+          <StatsCard
+            title="Downloads"
+            value={stats?.downloads?.toLocaleString() || 0}
+            change="Last 30 days"
+            changeType={stats?.downloadsTrend as "positive" | "negative" | "neutral"}
+            changeValue={stats?.downloadsChange}
+            icon={<Download className="w-6 h-6" />}
+            delay={0.1}
+            gradient="from-blue-600 to-cyan-500"
+          />
+          <StatsCard
+            title="New Users"
+            value={stats?.newUsers || 0}
+            change="Last 7 days"
+            changeType="neutral"
+            icon={<TrendingUp className="w-6 h-6" />}
+            delay={0.15}
+            gradient="from-orange-600 to-amber-500"
           />
         </div>
 
-        {/* Radio Mood Distribution */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="glass-panel p-6 rounded-xl"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <Radio className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-lg font-semibold">
-              Radio Mood Distribution
+        {/* Secondary Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatsCard
+            title="Artists"
+            value={stats?.artists || 0}
+            icon={<Mic2 className="w-5 h-5" />}
+            delay={0.2}
+          />
+          <StatsCard
+            title="Featured"
+            value={stats?.featuredArtists || 0}
+            icon={<Star className="w-5 h-5" />}
+            delay={0.22}
+          />
+          <StatsCard
+            title="Releases"
+            value={stats?.releases || 0}
+            change={`+${stats?.newReleases || 0} this week`}
+            changeType="neutral"
+            icon={<Disc3 className="w-5 h-5" />}
+            delay={0.24}
+          />
+          <StatsCard
+            title="Tracks"
+            value={stats?.tracks || 0}
+            icon={<Music className="w-5 h-5" />}
+            delay={0.26}
+          />
+          <StatsCard
+            title="Users"
+            value={stats?.users || 0}
+            icon={<Users className="w-5 h-5" />}
+            delay={0.28}
+          />
+          <StatsCard
+            title="Radio Moods"
+            value={stats?.moodDistribution?.length || 0}
+            icon={<Radio className="w-5 h-5" />}
+            delay={0.3}
+          />
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Release Types */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+            className="glass-panel p-6 rounded-xl"
+          >
+            <h2 className="font-display text-lg font-semibold mb-4">
+              Release Types
             </h2>
-          </div>
-          <div className="h-[280px]">
-            {stats?.moodDistribution?.length ? (
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.moodDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
-                  >
-                    {stats.moodDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                <BarChart data={stats?.releaseTypes || []} layout="vertical">
+                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} width={60} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                     }}
-                    formatter={(value: number) => [`${value} tracks`, "Count"]}
                   />
-                  <Legend
-                    formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
-                  />
-                </PieChart>
+                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No mood data available
-              </div>
-            )}
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Radio Mood Distribution */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.34 }}
+            className="glass-panel p-6 rounded-xl lg:col-span-2"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Radio className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-lg font-semibold">
+                Radio Mood Distribution
+              </h2>
+            </div>
+            <div className="h-[200px]">
+              {stats?.moodDistribution?.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.moodDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {stats.moodDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value: number) => [`${value} tracks`, "Count"]}
+                    />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      formatter={(value) => <span className="text-xs text-foreground">{value}</span>}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No mood data available
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
 
         {/* Chart */}
         <motion.div
