@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/admin/FileUpload";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Music, Loader2, Search, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Music, Loader2, Search, Clock, Mic } from "lucide-react";
 
 interface Track {
   id: string;
@@ -41,7 +41,11 @@ interface Track {
   duration_seconds: number | null;
   created_at: string;
   release: { id: string; title: string } | null;
-  commentary: { id: string; commentary_text: string } | null;
+  commentary: { 
+    id: string; 
+    commentary_text: string;
+    commentary_audio_path: string | null;
+  } | null;
 }
 
 interface TrackForm {
@@ -51,6 +55,7 @@ interface TrackForm {
   audio_path: string;
   duration_seconds: number;
   commentary_text: string;
+  commentary_audio_path: string;
 }
 
 const initialForm: TrackForm = {
@@ -60,6 +65,7 @@ const initialForm: TrackForm = {
   audio_path: "",
   duration_seconds: 0,
   commentary_text: "",
+  commentary_audio_path: "",
 };
 
 export default function AdminTracks() {
@@ -83,7 +89,7 @@ export default function AdminTracks() {
           duration_seconds,
           created_at,
           release:releases(id, title),
-          commentary:track_commentary(id, commentary_text)
+          commentary:track_commentary(id, commentary_text, commentary_audio_path)
         `)
         .order("created_at", { ascending: false });
 
@@ -124,7 +130,7 @@ export default function AdminTracks() {
         if (trackError) throw trackError;
 
         // Update or create commentary
-        if (data.commentary_text) {
+        if (data.commentary_text || data.commentary_audio_path) {
           const { data: existingCommentary } = await supabase
             .from("track_commentary")
             .select("id")
@@ -134,13 +140,17 @@ export default function AdminTracks() {
           if (existingCommentary) {
             const { error } = await supabase
               .from("track_commentary")
-              .update({ commentary_text: data.commentary_text })
+              .update({ 
+                commentary_text: data.commentary_text,
+                commentary_audio_path: data.commentary_audio_path || null,
+              })
               .eq("id", existingCommentary.id);
             if (error) throw error;
           } else {
             const { error } = await supabase.from("track_commentary").insert({
               track_id: editingId,
-              commentary_text: data.commentary_text,
+              commentary_text: data.commentary_text || "",
+              commentary_audio_path: data.commentary_audio_path || null,
             });
             if (error) throw error;
           }
@@ -161,10 +171,11 @@ export default function AdminTracks() {
         if (trackError) throw trackError;
 
         // Create commentary if provided
-        if (data.commentary_text && newTrack) {
+        if ((data.commentary_text || data.commentary_audio_path) && newTrack) {
           const { error } = await supabase.from("track_commentary").insert({
             track_id: newTrack.id,
-            commentary_text: data.commentary_text,
+            commentary_text: data.commentary_text || "",
+            commentary_audio_path: data.commentary_audio_path || null,
           });
           if (error) throw error;
         }
@@ -207,6 +218,7 @@ export default function AdminTracks() {
       audio_path: track.audio_path,
       duration_seconds: track.duration_seconds || 0,
       commentary_text: track.commentary?.commentary_text || "",
+      commentary_audio_path: track.commentary?.commentary_audio_path || "",
     });
     setDialogOpen(true);
   };
@@ -347,6 +359,23 @@ export default function AdminTracks() {
                   />
                 </div>
 
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Mic className="w-4 h-4" />
+                    Audio Commentary
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Upload an audio file where you discuss the track's creation, inspiration, or behind-the-scenes stories.
+                  </p>
+                  <FileUpload
+                    bucket="audio"
+                    currentUrl={form.commentary_audio_path}
+                    onUpload={(path) => setForm({ ...form, commentary_audio_path: path })}
+                    onRemove={() => setForm({ ...form, commentary_audio_path: "" })}
+                    maxSizeMB={50}
+                  />
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <Button
                     type="button"
@@ -431,9 +460,17 @@ export default function AdminTracks() {
                     </TableCell>
                     <TableCell>
                       {track.commentary ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
-                          Has commentary
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                            Text
+                          </span>
+                          {track.commentary.commentary_audio_path && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-accent/20 text-accent-foreground">
+                              <Mic className="w-3 h-3" />
+                              Audio
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">—</span>
                       )}
