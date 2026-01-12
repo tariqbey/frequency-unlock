@@ -69,7 +69,7 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="gap-2">
+                <DropdownMenuItem className="gap-2" onClick={() => navigate("/profile")}>
                   <User className="w-4 h-4" />
                   Profile
                 </DropdownMenuItem>
