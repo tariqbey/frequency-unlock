@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
+import { GeoDistributionMap } from "@/components/admin/GeoDistributionMap";
 import { 
   Disc3, Music, DollarSign, Users, Radio, Mic2, 
   PlayCircle, Download, Star, TrendingUp, Trophy, Crown
@@ -595,6 +596,9 @@ export default function AdminDashboard() {
             </div>
           </motion.div>
         </div>
+
+        {/* Geographic Distribution */}
+        <GeoDistributionMap />
 
         {/* Leaderboards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
