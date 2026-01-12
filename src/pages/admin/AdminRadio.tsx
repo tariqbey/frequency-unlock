@@ -43,6 +43,7 @@ import {
   Settings2,
   Star,
   Power,
+  ListMusic,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -50,6 +51,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
+import { RadioScheduleManager } from "@/components/admin/RadioScheduleManager";
 
 const MOOD_OPTIONS = [
   { value: "", label: "No mood", icon: <Radio className="w-4 h-4" /> },
@@ -364,13 +366,27 @@ export default function AdminRadio() {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Music className="w-5 h-5 text-primary" />
+        {/* Tabs for different sections */}
+        <Tabs defaultValue="tracks" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="tracks" className="gap-2">
+              <ListMusic className="w-4 h-4" />
+              Track Library
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              Scheduling
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tracks" className="space-y-6">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Music className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.totalTracks}</p>
@@ -777,6 +793,12 @@ export default function AdminRadio() {
             </div>
           )}
         </motion.div>
+          </TabsContent>
+
+          <TabsContent value="schedule">
+            <RadioScheduleManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );
