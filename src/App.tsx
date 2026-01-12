@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Library from "./pages/Library";
 import Release from "./pages/Release";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminArtists from "./pages/admin/AdminArtists";
 import AdminReleases from "./pages/admin/AdminReleases";
 import AdminTracks from "./pages/admin/AdminTracks";
 import AdminDonations from "./pages/admin/AdminDonations";
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/library" element={<Library />} />
               <Route path="/release/:id" element={<Release />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/artists" element={<AdminRoute><AdminArtists /></AdminRoute>} />
               <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />
               <Route path="/admin/tracks" element={<AdminRoute><AdminTracks /></AdminRoute>} />
               <Route path="/admin/donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />

@@ -11,7 +11,7 @@ import {
   Music,
   DollarSign,
   Users,
-  Settings,
+  UserCircle,
   LogOut,
   ChevronLeft,
 } from "lucide-react";
@@ -22,6 +22,7 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/artists", icon: UserCircle, label: "Artists" },
   { href: "/admin/releases", icon: Disc3, label: "Releases" },
   { href: "/admin/tracks", icon: Music, label: "Tracks" },
   { href: "/admin/donations", icon: DollarSign, label: "Donations" },
