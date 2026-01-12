@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, Music, MessageSquare, Shield, Download } from "lucide-react";
+import { User, Settings, LogOut, Music, MessageSquare, Shield, Download, Disc3 } from "lucide-react";
 
 const navLinks = [
   { href: "/library", label: "Library", icon: Music },
@@ -20,7 +20,7 @@ const navLinks = [
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, signOut, isAdmin } = useAuth();
+  const { user, profile, signOut, isAdmin, isArtist } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -81,6 +81,18 @@ export function Navbar() {
                   <Settings className="w-4 h-4" />
                   Settings
                 </DropdownMenuItem>
+                {isArtist && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="gap-2"
+                      onClick={() => navigate("/artist")}
+                    >
+                      <Disc3 className="w-4 h-4" />
+                      Artist Dashboard
+                    </DropdownMenuItem>
+                  </>
+                )}
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
