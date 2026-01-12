@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { StatsCard } from "@/components/admin/StatsCard";
-import { Disc3, Music, DollarSign, Users, TrendingUp, PlayCircle } from "lucide-react";
+import { Disc3, Music, DollarSign, Users, Radio, Mic2, Sparkles, Zap, Moon, Heart, Cloud } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   AreaChart,
@@ -12,32 +12,64 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
+
+const MOOD_CONFIG = [
+  { value: "energetic", label: "Energetic", color: "hsl(25, 95%, 55%)" },
+  { value: "chill", label: "Chill", color: "hsl(200, 80%, 50%)" },
+  { value: "melancholic", label: "Melancholic", color: "hsl(260, 60%, 55%)" },
+  { value: "uplifting", label: "Uplifting", color: "hsl(45, 90%, 55%)" },
+  { value: "dark", label: "Dark", color: "hsl(280, 70%, 40%)" },
+  { value: "romantic", label: "Romantic", color: "hsl(340, 80%, 55%)" },
+  { value: "dreamy", label: "Dreamy", color: "hsl(180, 60%, 50%)" },
+  { value: null, label: "Unassigned", color: "hsl(var(--muted-foreground))" },
+];
 
 export default function AdminDashboard() {
   // Fetch stats
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [releasesRes, tracksRes, donationsRes, usersRes, eventsRes] = await Promise.all([
+      const [releasesRes, tracksRes, donationsRes, usersRes, artistsRes, eventsRes, moodTracksRes] = await Promise.all([
         supabase.from("releases").select("id", { count: "exact", head: true }),
         supabase.from("tracks").select("id", { count: "exact", head: true }),
         supabase.from("donations").select("amount_cents").eq("status", "paid"),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("artists").select("id", { count: "exact", head: true }),
         supabase
           .from("events")
           .select("created_at, event_type")
           .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from("tracks").select("mood"),
       ]);
 
       const totalRevenue = donationsRes.data?.reduce((sum, d) => sum + d.amount_cents, 0) || 0;
+
+      // Calculate mood distribution
+      const moodCounts = (moodTracksRes.data || []).reduce((acc: Record<string, number>, track) => {
+        const mood = track.mood || "null";
+        acc[mood] = (acc[mood] || 0) + 1;
+        return acc;
+      }, {});
+
+      const moodDistribution = MOOD_CONFIG.map((m) => ({
+        name: m.label,
+        value: moodCounts[m.value || "null"] || 0,
+        color: m.color,
+      })).filter((m) => m.value > 0);
 
       return {
         releases: releasesRes.count || 0,
         tracks: tracksRes.count || 0,
         revenue: totalRevenue,
         users: usersRes.count || 0,
+        artists: artistsRes.count || 0,
         recentEvents: eventsRes.data || [],
+        moodDistribution,
       };
     },
   });
@@ -95,12 +127,18 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <StatsCard
+            title="Total Artists"
+            value={stats?.artists || 0}
+            icon={<Mic2 className="w-6 h-6" />}
+            delay={0}
+          />
           <StatsCard
             title="Total Releases"
             value={stats?.releases || 0}
             icon={<Disc3 className="w-6 h-6" />}
-            delay={0}
+            delay={0.05}
           />
           <StatsCard
             title="Total Tracks"
@@ -114,15 +152,68 @@ export default function AdminDashboard() {
             change="All time"
             changeType="neutral"
             icon={<DollarSign className="w-6 h-6" />}
-            delay={0.2}
+            delay={0.15}
           />
           <StatsCard
             title="Total Users"
             value={stats?.users || 0}
             icon={<Users className="w-6 h-6" />}
-            delay={0.3}
+            delay={0.2}
           />
         </div>
+
+        {/* Radio Mood Distribution */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="glass-panel p-6 rounded-xl"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <Radio className="w-5 h-5 text-primary" />
+            <h2 className="font-display text-lg font-semibold">
+              Radio Mood Distribution
+            </h2>
+          </div>
+          <div className="h-[280px]">
+            {stats?.moodDistribution?.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.moodDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                  >
+                    {stats.moodDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                    formatter={(value: number) => [`${value} tracks`, "Count"]}
+                  />
+                  <Legend
+                    formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No mood data available
+              </div>
+            )}
+          </div>
+        </motion.div>
 
         {/* Chart */}
         <motion.div
