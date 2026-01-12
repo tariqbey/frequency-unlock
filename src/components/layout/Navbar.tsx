@@ -77,33 +77,28 @@ export function Navbar() {
                   <Download className="w-4 h-4" />
                   My Downloads
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2" onClick={() => navigate("/settings")}>
                   <Settings className="w-4 h-4" />
                   Settings
                 </DropdownMenuItem>
                 {isArtist && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className="gap-2"
-                      onClick={() => navigate("/artist")}
-                    >
-                      <Disc3 className="w-4 h-4" />
-                      Artist Dashboard
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem 
+                    className="gap-2"
+                    onClick={() => navigate("/artist")}
+                  >
+                    <Disc3 className="w-4 h-4" />
+                    Artist Dashboard
+                  </DropdownMenuItem>
                 )}
                 {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className="gap-2"
-                      onClick={() => navigate("/admin")}
-                    >
-                      <Shield className="w-4 h-4" />
-                      Admin Panel
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem 
+                    className="gap-2"
+                    onClick={() => navigate("/admin")}
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin Panel
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-destructive">
