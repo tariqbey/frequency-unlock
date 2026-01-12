@@ -286,6 +286,81 @@ export type Database = {
           },
         ]
       }
+      radio_playlist_tracks: {
+        Row: {
+          added_at: string
+          id: string
+          playlist_id: string
+          position: number
+          track_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          playlist_id: string
+          position?: number
+          track_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          playlist_id?: string
+          position?: number
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_playlist_tracks_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "radio_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radio_playlist_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radio_playlists: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          station_mood: string | null
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          station_mood?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          station_mood?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       radio_schedule: {
         Row: {
           created_at: string
