@@ -31,7 +31,16 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/admin/FileUpload";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Music, Loader2, Search, Clock, Mic } from "lucide-react";
+import { Plus, Pencil, Trash2, Music, Loader2, Search, Clock, Mic, Radio, Sparkles, Zap, Focus, Heart, Sun } from "lucide-react";
+
+const MOOD_OPTIONS = [
+  { value: "", label: "No mood", icon: null },
+  { value: "chill", label: "Chill", icon: <Sparkles className="w-4 h-4" /> },
+  { value: "energetic", label: "Energetic", icon: <Zap className="w-4 h-4" /> },
+  { value: "focus", label: "Focus", icon: <Focus className="w-4 h-4" /> },
+  { value: "melancholic", label: "Melancholic", icon: <Heart className="w-4 h-4" /> },
+  { value: "uplifting", label: "Uplifting", icon: <Sun className="w-4 h-4" /> },
+];
 
 interface Track {
   id: string;
@@ -39,6 +48,7 @@ interface Track {
   track_number: number;
   audio_path: string;
   duration_seconds: number | null;
+  mood: string | null;
   created_at: string;
   release: { id: string; title: string } | null;
   commentary: { 
@@ -54,6 +64,7 @@ interface TrackForm {
   track_number: number;
   audio_path: string;
   duration_seconds: number;
+  mood: string;
   commentary_text: string;
   commentary_audio_path: string;
 }
@@ -64,6 +75,7 @@ const initialForm: TrackForm = {
   track_number: 1,
   audio_path: "",
   duration_seconds: 0,
+  mood: "",
   commentary_text: "",
   commentary_audio_path: "",
 };
@@ -87,6 +99,7 @@ export default function AdminTracks() {
           track_number,
           audio_path,
           duration_seconds,
+          mood,
           created_at,
           release:releases(id, title),
           commentary:track_commentary(id, commentary_text, commentary_audio_path)
@@ -125,6 +138,7 @@ export default function AdminTracks() {
             track_number: data.track_number,
             audio_path: data.audio_path,
             duration_seconds: data.duration_seconds || null,
+            mood: data.mood === "none" ? null : (data.mood || null),
           })
           .eq("id", editingId);
         if (trackError) throw trackError;
@@ -165,6 +179,7 @@ export default function AdminTracks() {
             track_number: data.track_number,
             audio_path: data.audio_path,
             duration_seconds: data.duration_seconds || null,
+            mood: data.mood === "none" ? null : (data.mood || null),
           })
           .select()
           .single();
@@ -217,6 +232,7 @@ export default function AdminTracks() {
       track_number: track.track_number,
       audio_path: track.audio_path,
       duration_seconds: track.duration_seconds || 0,
+      mood: track.mood || "",
       commentary_text: track.commentary?.commentary_text || "",
       commentary_audio_path: track.commentary?.commentary_audio_path || "",
     });
@@ -336,6 +352,34 @@ export default function AdminTracks() {
                 </div>
 
                 <div>
+                  <Label className="flex items-center gap-2">
+                    <Radio className="w-4 h-4" />
+                    Radio Station Mood
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Assign a mood to make this track appear in filtered radio stations.
+                  </p>
+                  <Select
+                    value={form.mood}
+                    onValueChange={(value) => setForm({ ...form, mood: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mood (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MOOD_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value || "none"}>
+                          <div className="flex items-center gap-2">
+                            {option.icon}
+                            <span>{option.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
                   <Label>Audio File</Label>
                   <FileUpload
                     bucket="audio"
@@ -432,6 +476,7 @@ export default function AdminTracks() {
                   <TableHead>#</TableHead>
                   <TableHead>Track</TableHead>
                   <TableHead>Release</TableHead>
+                  <TableHead>Mood</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Commentary</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
@@ -452,6 +497,16 @@ export default function AdminTracks() {
                       </div>
                     </TableCell>
                     <TableCell>{track.release?.title || "—"}</TableCell>
+                    <TableCell>
+                      {track.mood ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary capitalize">
+                          {MOOD_OPTIONS.find(m => m.value === track.mood)?.icon}
+                          {track.mood}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Clock className="w-3 h-3" />
