@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, Play, Disc } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 
 interface FeaturedArtist {
   id: string;
@@ -17,10 +17,15 @@ interface FeaturedArtist {
   } | null;
 }
 
+const AUTO_SCROLL_INTERVAL = 4000; // 4 seconds
+const SCROLL_AMOUNT = 288; // width of card (72 * 4) + gap
+
 export function FeaturedArtistCarousel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: artists, isLoading } = useQuery({
     queryKey: ["featured-artists"],
@@ -53,27 +58,58 @@ export function FeaturedArtistCarousel() {
     },
   });
 
-  const checkScroll = () => {
+  const checkScroll = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       setCanScrollLeft(scrollLeft > 0);
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
     }
-  };
+  }, []);
 
-  const scroll = (direction: "left" | "right") => {
+  const scroll = useCallback((direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = 320;
-      scrollRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      const atEnd = scrollLeft >= scrollWidth - clientWidth - 10;
+      
+      if (direction === "right" && atEnd) {
+        // Loop back to start
+        scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        scrollRef.current.scrollBy({
+          left: direction === "left" ? -SCROLL_AMOUNT : SCROLL_AMOUNT,
+          behavior: "smooth",
+        });
+      }
       setTimeout(checkScroll, 300);
     }
-  };
+  }, [checkScroll]);
 
   // Filter to only show artists with releases
   const featuredArtists = artists?.filter((a) => a.latestRelease) || [];
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (featuredArtists.length <= 3) return;
+
+    const startAutoScroll = () => {
+      autoScrollRef.current = setInterval(() => {
+        if (!isPaused) {
+          scroll("right");
+        }
+      }, AUTO_SCROLL_INTERVAL);
+    };
+
+    startAutoScroll();
+
+    return () => {
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+      }
+    };
+  }, [isPaused, scroll, featuredArtists.length]);
+
+  const handleMouseEnter = () => setIsPaused(true);
+  const handleMouseLeave = () => setIsPaused(false);
 
   if (isLoading) {
     return (
@@ -94,7 +130,11 @@ export function FeaturedArtistCarousel() {
   }
 
   return (
-    <div className="relative group">
+    <div 
+      className="relative group"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Scroll buttons */}
       {canScrollLeft && (
         <Button
