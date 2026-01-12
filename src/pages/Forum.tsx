@@ -13,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MessageSquare,
-  TrendingUp,
   Clock,
   Pin,
   User,
@@ -22,6 +21,7 @@ import {
   Flame,
   Loader2,
 } from "lucide-react";
+import { VoteButtons } from "@/components/forum/VoteButtons";
 
 interface Thread {
   id: string;
@@ -269,10 +269,9 @@ function ThreadCard({ thread, index }: ThreadCardProps) {
         <Card className="border-border/50 bg-card/50 backdrop-blur hover:bg-card/80 hover:border-primary/30 transition-all duration-200 group">
           <CardContent className="p-4 sm:p-6">
             <div className="flex gap-4">
-              {/* Vote placeholder / engagement indicator */}
-              <div className="hidden sm:flex flex-col items-center gap-1 text-muted-foreground">
-                <TrendingUp className="w-5 h-5 group-hover:text-primary transition-colors" />
-                <span className="text-sm font-medium">{thread.comment_count}</span>
+              {/* Vote buttons */}
+              <div className="hidden sm:block" onClick={(e) => e.preventDefault()}>
+                <VoteButtons threadId={thread.id} orientation="vertical" />
               </div>
 
               {/* Content */}

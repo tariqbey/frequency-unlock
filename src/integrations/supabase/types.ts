@@ -465,6 +465,48 @@ export type Database = {
         }
         Relationships: []
       }
+      votes: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          id: string
+          thread_id: string | null
+          user_id: string
+          vote_type: number
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          thread_id?: string | null
+          user_id: string
+          vote_type: number
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          thread_id?: string | null
+          user_id?: string
+          vote_type?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
