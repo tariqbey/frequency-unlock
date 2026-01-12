@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,10 +42,13 @@ import {
   Volume2,
   Eye,
   EyeOff,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function Settings() {
-  const { user, profile, isAdmin, isArtist, loading } = useAuth();
+  const navigate = useNavigate();
+  const { user, profile, isAdmin, isArtist, loading, signOut } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -52,6 +66,11 @@ export default function Settings() {
   const [newEmail, setNewEmail] = useState("");
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [emailError, setEmailError] = useState("");
+
+  // Account deletion state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Preferences state
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -202,6 +221,37 @@ export default function Settings() {
   const resetEmailDialog = () => {
     setNewEmail("");
     setEmailError("");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== "DELETE MY ACCOUNT") {
+      toast.error("Please type 'DELETE MY ACCOUNT' to confirm");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke("delete-account", {
+        body: { confirmation: deleteConfirmation },
+      });
+
+      if (response.error) throw response.error;
+
+      await signOut();
+      toast.success("Your account has been deleted");
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      toast.error(error.message || "Failed to delete account");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const resetDeleteDialog = () => {
+    setDeleteConfirmation("");
   };
 
   return (
@@ -537,7 +587,7 @@ export default function Settings() {
           </div>
 
           {/* Appearance */}
-          <div className="glass-card p-6">
+          <div className="glass-card p-6 mb-6">
             <h2 className="font-display font-semibold mb-6 flex items-center gap-2">
               <Palette className="w-5 h-5 text-primary" />
               Appearance
@@ -547,6 +597,90 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">
                 Theme customization coming soon. Currently using system default.
               </p>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="glass-card p-6 border-destructive/50">
+            <h2 className="font-display font-semibold mb-6 flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Danger Zone
+            </h2>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="font-medium">Delete Account</p>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete your account and all associated data
+                  </p>
+                </div>
+                <Dialog 
+                  open={deleteDialogOpen} 
+                  onOpenChange={(open) => {
+                    setDeleteDialogOpen(open);
+                    if (!open) resetDeleteDialog();
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      Delete Account
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-5 h-5" />
+                        Delete Account
+                      </DialogTitle>
+                      <DialogDescription>
+                        This action is <strong>permanent and cannot be undone</strong>. 
+                        All your data, including your profile, donations history, and forum posts will be deleted.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <p className="text-sm text-destructive font-medium">
+                          Warning: This will immediately delete:
+                        </p>
+                        <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+                          <li>Your user profile</li>
+                          <li>All your forum posts and comments</li>
+                          <li>Your donation history</li>
+                          <li>Any download tokens</li>
+                        </ul>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="deleteConfirmation">
+                          Type <span className="font-mono font-bold">DELETE MY ACCOUNT</span> to confirm
+                        </Label>
+                        <Input
+                          id="deleteConfirmation"
+                          value={deleteConfirmation}
+                          onChange={(e) => setDeleteConfirmation(e.target.value)}
+                          placeholder="DELETE MY ACCOUNT"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setDeleteDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteAccount}
+                        disabled={isDeleting || deleteConfirmation !== "DELETE MY ACCOUNT"}
+                      >
+                        {isDeleting ? "Deleting..." : "Permanently Delete"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
         </motion.div>
