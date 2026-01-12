@@ -10,10 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, Music, MessageSquare, Shield, Download, Disc3 } from "lucide-react";
+import { User, Settings, LogOut, Music, MessageSquare, Shield, Download, Disc3, Radio } from "lucide-react";
 
 const navLinks = [
   { href: "/library", label: "Library", icon: Music },
+  { href: "/radio", label: "Radio", icon: Radio },
   { href: "/forum", label: "Forum", icon: MessageSquare },
 ];
 
