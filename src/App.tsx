@@ -23,6 +23,9 @@ import AdminReleases from "./pages/admin/AdminReleases";
 import AdminTracks from "./pages/admin/AdminTracks";
 import AdminDonations from "./pages/admin/AdminDonations";
 import AdminUsers from "./pages/admin/AdminUsers";
+import ArtistDashboard from "./pages/artist/ArtistDashboard";
+import ArtistReleases from "./pages/artist/ArtistReleases";
+import ArtistTracks from "./pages/artist/ArtistTracks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +35,16 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   
   if (loading) return null;
   if (!isAdmin) return <Navigate to="/" replace />;
+  
+  return <>{children}</>;
+}
+
+function ArtistRoute({ children }: { children: React.ReactNode }) {
+  const { isArtist, isAdmin, loading } = useAuth();
+  
+  if (loading) return null;
+  // Allow admins and artists to access artist routes
+  if (!isArtist && !isAdmin) return <Navigate to="/" replace />;
   
   return <>{children}</>;
 }
@@ -61,6 +74,9 @@ const App = () => (
               <Route path="/admin/tracks" element={<AdminRoute><AdminTracks /></AdminRoute>} />
               <Route path="/admin/donations" element={<AdminRoute><AdminDonations /></AdminRoute>} />
               <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+              <Route path="/artist" element={<ArtistRoute><ArtistDashboard /></ArtistRoute>} />
+              <Route path="/artist/releases" element={<ArtistRoute><ArtistReleases /></ArtistRoute>} />
+              <Route path="/artist/tracks" element={<ArtistRoute><ArtistTracks /></ArtistRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
