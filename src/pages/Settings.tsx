@@ -47,6 +47,12 @@ export default function Settings() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
+  // Email change state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
   // Preferences state
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [newReleaseAlerts, setNewReleaseAlerts] = useState(true);
@@ -149,6 +155,55 @@ export default function Settings() {
     setShowConfirmPassword(false);
   };
 
+  const validateEmail = (email: string): string | null => {
+    if (!email.trim()) {
+      return "Email is required";
+    }
+    if (email.length > 255) {
+      return "Email must be less than 255 characters";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    if (email.toLowerCase() === user?.email?.toLowerCase()) {
+      return "New email must be different from current email";
+    }
+    return null;
+  };
+
+  const handleChangeEmail = async () => {
+    setEmailError("");
+
+    const validationError = validateEmail(newEmail);
+    if (validationError) {
+      setEmailError(validationError);
+      return;
+    }
+
+    setIsChangingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail.trim(),
+      });
+
+      if (error) throw error;
+
+      toast.success("Confirmation email sent! Please check your new email inbox to confirm the change.");
+      setEmailDialogOpen(false);
+      setNewEmail("");
+    } catch (error: any) {
+      setEmailError(error.message || "Failed to change email");
+    } finally {
+      setIsChangingEmail(false);
+    }
+  };
+
+  const resetEmailDialog = () => {
+    setNewEmail("");
+    setEmailError("");
+  };
+
   return (
     <div className="min-h-screen bg-background pb-32">
       <Navbar />
@@ -226,16 +281,74 @@ export default function Settings() {
                   <Mail className="w-4 h-4" />
                   Email Address
                 </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={user.email || ""}
-                  disabled
-                  className="bg-muted/50"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Contact support to change your email address
-                </p>
+                <div className="flex gap-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={user.email || ""}
+                    disabled
+                    className="bg-muted/50 flex-1"
+                  />
+                  <Dialog 
+                    open={emailDialogOpen} 
+                    onOpenChange={(open) => {
+                      setEmailDialogOpen(open);
+                      if (!open) resetEmailDialog();
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Change</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Change Email Address</DialogTitle>
+                        <DialogDescription>
+                          Enter your new email address. A confirmation link will be sent to verify the change.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currentEmail">Current Email</Label>
+                          <Input
+                            id="currentEmail"
+                            type="email"
+                            value={user.email || ""}
+                            disabled
+                            className="bg-muted/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newEmail">New Email</Label>
+                          <Input
+                            id="newEmail"
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="Enter new email address"
+                            maxLength={255}
+                          />
+                        </div>
+                        {emailError && (
+                          <p className="text-sm text-destructive">{emailError}</p>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setEmailDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleChangeEmail}
+                          disabled={isChangingEmail || !newEmail}
+                        >
+                          {isChangingEmail ? "Sending..." : "Send Confirmation"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
 
               <div className="space-y-2">
