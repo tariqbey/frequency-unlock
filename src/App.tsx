@@ -27,6 +27,7 @@ import ArtistDashboard from "./pages/artist/ArtistDashboard";
 import ArtistReleases from "./pages/artist/ArtistReleases";
 import ArtistTracks from "./pages/artist/ArtistTracks";
 import Settings from "./pages/Settings";
+import Radio from "./pages/Radio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/downloads" element={<Downloads />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/radio" element={<Radio />} />
               <Route path="/forum" element={<ForumPage />} />
               <Route path="/forum/new" element={<ForumNewThread />} />
               <Route path="/forum/thread/:id" element={<ForumThread />} />
