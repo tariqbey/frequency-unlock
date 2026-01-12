@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/admin/FileUpload";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Disc3, Loader2, Search } from "lucide-react";
@@ -294,12 +295,13 @@ export default function AdminReleases() {
                 </div>
 
                 <div>
-                  <Label htmlFor="cover_art_url">Cover Art URL</Label>
-                  <Input
-                    id="cover_art_url"
-                    value={form.cover_art_url}
-                    onChange={(e) => setForm({ ...form, cover_art_url: e.target.value })}
-                    placeholder="https://..."
+                  <Label>Cover Art</Label>
+                  <FileUpload
+                    bucket="artwork"
+                    currentUrl={form.cover_art_url}
+                    onUpload={(url) => setForm({ ...form, cover_art_url: url })}
+                    onRemove={() => setForm({ ...form, cover_art_url: "" })}
+                    maxSizeMB={5}
                   />
                 </div>
 

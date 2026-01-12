@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/admin/FileUpload";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Music, Loader2, Search, Clock } from "lucide-react";
@@ -323,12 +324,13 @@ export default function AdminTracks() {
                 </div>
 
                 <div>
-                  <Label htmlFor="audio_path">Audio Path</Label>
-                  <Input
-                    id="audio_path"
-                    value={form.audio_path}
-                    onChange={(e) => setForm({ ...form, audio_path: e.target.value })}
-                    placeholder="path/to/audio.mp3"
+                  <Label>Audio File</Label>
+                  <FileUpload
+                    bucket="audio"
+                    currentUrl={form.audio_path}
+                    onUpload={(path) => setForm({ ...form, audio_path: path })}
+                    onRemove={() => setForm({ ...form, audio_path: "" })}
+                    maxSizeMB={50}
                   />
                 </div>
 
