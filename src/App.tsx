@@ -13,6 +13,7 @@ import Library from "./pages/Library";
 import Release from "./pages/Release";
 import ArtistProfile from "./pages/ArtistProfile";
 import UserProfile from "./pages/UserProfile";
+import Downloads from "./pages/Downloads";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminArtists from "./pages/admin/AdminArtists";
 import AdminReleases from "./pages/admin/AdminReleases";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/release/:id" element={<Release />} />
               <Route path="/artist/:id" element={<ArtistProfile />} />
               <Route path="/profile" element={<UserProfile />} />
+              <Route path="/downloads" element={<Downloads />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
               <Route path="/admin/artists" element={<AdminRoute><AdminArtists /></AdminRoute>} />
               <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, Music, MessageSquare, Shield } from "lucide-react";
+import { User, Settings, LogOut, Music, MessageSquare, Shield, Download } from "lucide-react";
 
 const navLinks = [
   { href: "/library", label: "Library", icon: Music },
@@ -72,6 +72,10 @@ export function Navbar() {
                 <DropdownMenuItem className="gap-2" onClick={() => navigate("/profile")}>
                   <User className="w-4 h-4" />
                   Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" onClick={() => navigate("/downloads")}>
+                  <Download className="w-4 h-4" />
+                  My Downloads
                 </DropdownMenuItem>
                 <DropdownMenuItem className="gap-2">
                   <Settings className="w-4 h-4" />
