@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -32,8 +32,12 @@ import {
   Heart,
   Sun,
   Save,
+  Play,
+  Pause,
+  Volume2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 
 const MOOD_OPTIONS = [
   { value: "", label: "No mood", icon: <Radio className="w-4 h-4" /> },
@@ -48,6 +52,7 @@ interface Track {
   id: string;
   title: string;
   mood: string | null;
+  audio_path: string;
   release: { title: string } | null;
 }
 
@@ -56,6 +61,11 @@ export default function AdminRadio() {
   const [search, setSearch] = useState("");
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
   const [bulkMood, setBulkMood] = useState<string>("");
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [volume, setVolume] = useState(0.7);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fetch all tracks
   const { data: tracks, isLoading } = useQuery({
@@ -67,6 +77,7 @@ export default function AdminRadio() {
           id,
           title,
           mood,
+          audio_path,
           release:releases(title)
         `)
         .order("title");
@@ -75,6 +86,61 @@ export default function AdminRadio() {
       return data as unknown as Track[];
     },
   });
+
+  // Handle track preview
+  const handlePreview = async (track: Track) => {
+    if (playingTrackId === track.id && isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    if (playingTrackId === track.id && !isPlaying) {
+      audioRef.current?.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    // Get signed URL for audio
+    const { data: signedData, error } = await supabase.storage
+      .from("audio")
+      .createSignedUrl(track.audio_path, 3600);
+
+    if (error || !signedData?.signedUrl) {
+      toast.error("Failed to load audio");
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    const audio = new Audio(signedData.signedUrl);
+    audio.volume = volume;
+    audioRef.current = audio;
+
+    audio.addEventListener("timeupdate", () => {
+      setProgress((audio.currentTime / audio.duration) * 100);
+    });
+
+    audio.addEventListener("ended", () => {
+      setIsPlaying(false);
+      setProgress(0);
+      setPlayingTrackId(null);
+    });
+
+    audio.play();
+    setPlayingTrackId(track.id);
+    setIsPlaying(true);
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
 
   // Get mood stats
   const moodStats = tracks?.reduce((acc, track) => {
@@ -247,15 +313,27 @@ export default function AdminRadio() {
           </motion.div>
         )}
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search tracks..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search & Volume */}
+        <div className="flex items-center gap-6">
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tracks..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center gap-2 min-w-[150px]">
+            <Volume2 className="w-4 h-4 text-muted-foreground" />
+            <Slider
+              value={[volume]}
+              max={1}
+              step={0.01}
+              onValueChange={handleVolumeChange}
+              className="w-24"
+            />
+          </div>
         </div>
 
         {/* Table */}
@@ -282,6 +360,7 @@ export default function AdminRadio() {
                       onCheckedChange={toggleAllTracks}
                     />
                   </TableHead>
+                  <TableHead>Preview</TableHead>
                   <TableHead>Track</TableHead>
                   <TableHead>Release</TableHead>
                   <TableHead>Current Mood</TableHead>
@@ -298,11 +377,39 @@ export default function AdminRadio() {
                       />
                     </TableCell>
                     <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full"
+                        onClick={() => handlePreview(track)}
+                      >
+                        {playingTrackId === track.id && isPlaying ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Play className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                          <Music className="w-5 h-5 text-muted-foreground" />
+                        <div className={`w-10 h-10 rounded flex items-center justify-center ${
+                          playingTrackId === track.id ? "bg-primary/20" : "bg-muted"
+                        }`}>
+                          <Music className={`w-5 h-5 ${
+                            playingTrackId === track.id ? "text-primary" : "text-muted-foreground"
+                          }`} />
                         </div>
-                        <span className="font-medium">{track.title}</span>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{track.title}</span>
+                          {playingTrackId === track.id && (
+                            <div className="w-24 h-1 bg-muted rounded-full mt-1 overflow-hidden">
+                              <div 
+                                className="h-full bg-primary transition-all duration-200"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{track.release?.title || "—"}</TableCell>
