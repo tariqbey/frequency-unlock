@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
+import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
 import { Radio, Headphones, Download, Music2 } from "lucide-react";
 
 const features = [
@@ -94,8 +95,29 @@ export default function Index() {
         </motion.div>
       </section>
 
-      {/* Features Section */}
+      {/* Featured Artists Section */}
       <section className="py-24 px-4">
+        <div className="container max-w-6xl">
+          <motion.div
+            className="mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="font-display text-3xl md:text-4xl font-bold">
+              Featured <span className="text-gradient">Artists</span>
+            </h2>
+            <p className="mt-4 text-muted-foreground max-w-xl">
+              Discover new music from independent artists
+            </p>
+          </motion.div>
+
+          <FeaturedArtistCarousel />
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-24 px-4 bg-muted/30">
         <div className="container max-w-6xl">
           <motion.div
             className="text-center mb-16"
