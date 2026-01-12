@@ -133,7 +133,33 @@ export default function Radio() {
     Array(20).fill(0)
   );
 
-  // Fetch all published tracks
+  // Fetch all published tracks (for getting counts)
+  const { data: allTracks } = useQuery({
+    queryKey: ["radio-all-tracks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tracks")
+        .select(`
+          id,
+          mood,
+          release:releases!inner(is_published)
+        `)
+        .eq("release.is_published", true);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Calculate track counts per mood
+  const moodCounts = allTracks?.reduce((acc, track) => {
+    const mood = track.mood || "all";
+    acc[mood] = (acc[mood] || 0) + 1;
+    acc["total"] = (acc["total"] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  // Fetch tracks for selected station
   const { data: tracks, isLoading } = useQuery({
     queryKey: ["radio-tracks", selectedStation.mood],
     queryFn: async () => {
@@ -184,6 +210,14 @@ export default function Radio() {
       })) as Track[];
     },
   });
+
+  // Helper to get count for a station
+  const getStationCount = (station: Station) => {
+    if (station.mood === null) {
+      return moodCounts["total"] || 0;
+    }
+    return moodCounts[station.mood] || 0;
+  };
 
   // Animate visualizer when playing
   useEffect(() => {
@@ -301,12 +335,20 @@ export default function Radio() {
                 }`}
               >
                 <div className="flex flex-col items-center gap-2">
-                  <div className={`p-2 rounded-full ${
+                  <div className={`relative p-2 rounded-full ${
                     selectedStation.id === station.id 
                       ? "bg-white/20" 
                       : "bg-background"
                   }`}>
                     {station.icon}
+                    {/* Track count badge */}
+                    <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold rounded-full ${
+                      selectedStation.id === station.id
+                        ? "bg-white text-black"
+                        : "bg-primary text-primary-foreground"
+                    }`}>
+                      {getStationCount(station)}
+                    </span>
                   </div>
                   <span className="font-medium text-sm">{station.name}</span>
                   <span className={`text-xs ${
