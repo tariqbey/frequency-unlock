@@ -4,8 +4,9 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { 
   Disc3, Music, DollarSign, Users, Radio, Mic2, 
-  PlayCircle, Download, Star, TrendingUp 
+  PlayCircle, Download, Star, TrendingUp, Trophy, Crown
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import {
   AreaChart,
@@ -177,6 +178,78 @@ export default function AdminDashboard() {
 
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Top releases by plays and donations
+  const { data: topReleases } = useQuery({
+    queryKey: ["admin-top-releases"],
+    queryFn: async () => {
+      // Get all releases with their info
+      const { data: releases, error: releasesError } = await supabase
+        .from("releases")
+        .select(`
+          id,
+          title,
+          cover_art_url,
+          artist:artists(name)
+        `)
+        .eq("is_published", true);
+
+      if (releasesError) throw releasesError;
+
+      // Get play counts per release
+      const { data: playEvents, error: playsError } = await supabase
+        .from("events")
+        .select("release_id")
+        .eq("event_type", "play_start")
+        .not("release_id", "is", null);
+
+      if (playsError) throw playsError;
+
+      // Get donation totals per release
+      const { data: donations, error: donationsError } = await supabase
+        .from("donations")
+        .select("release_id, amount_cents")
+        .eq("status", "paid");
+
+      if (donationsError) throw donationsError;
+
+      // Aggregate plays by release
+      const playsByRelease: Record<string, number> = {};
+      playEvents?.forEach((e) => {
+        if (e.release_id) {
+          playsByRelease[e.release_id] = (playsByRelease[e.release_id] || 0) + 1;
+        }
+      });
+
+      // Aggregate donations by release
+      const donationsByRelease: Record<string, number> = {};
+      donations?.forEach((d) => {
+        donationsByRelease[d.release_id] = (donationsByRelease[d.release_id] || 0) + d.amount_cents;
+      });
+
+      // Combine data
+      const enrichedReleases = releases?.map((r) => ({
+        id: r.id,
+        title: r.title,
+        coverArt: r.cover_art_url,
+        artist: (r.artist as any)?.name || "Unknown Artist",
+        plays: playsByRelease[r.id] || 0,
+        donations: donationsByRelease[r.id] || 0,
+      })) || [];
+
+      // Sort by plays (top played)
+      const topByPlays = [...enrichedReleases]
+        .sort((a, b) => b.plays - a.plays)
+        .slice(0, 5);
+
+      // Sort by donations (top earning)
+      const topByDonations = [...enrichedReleases]
+        .sort((a, b) => b.donations - a.donations)
+        .slice(0, 5);
+
+      return { topByPlays, topByDonations };
     },
   });
 
@@ -422,6 +495,121 @@ export default function AdminDashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+        </motion.div>
+
+        {/* Top Releases Leaderboard */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="glass-panel p-6 rounded-xl"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            <h2 className="font-display text-lg font-semibold">
+              Top Releases
+            </h2>
+          </div>
+          <Tabs defaultValue="plays" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="plays" className="gap-2">
+                <PlayCircle className="w-4 h-4" />
+                Most Played
+              </TabsTrigger>
+              <TabsTrigger value="donations" className="gap-2">
+                <DollarSign className="w-4 h-4" />
+                Top Earning
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="plays" className="space-y-3">
+              {topReleases?.topByPlays?.length ? (
+                topReleases.topByPlays.map((release, index) => (
+                  <div
+                    key={release.id}
+                    className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      index === 0 ? "bg-yellow-500 text-yellow-950" :
+                      index === 1 ? "bg-slate-300 text-slate-800" :
+                      index === 2 ? "bg-amber-600 text-amber-100" :
+                      "bg-muted-foreground/20 text-muted-foreground"
+                    }`}>
+                      {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+                    </div>
+                    <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                      {release.coverArt ? (
+                        <img 
+                          src={release.coverArt} 
+                          alt={release.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Disc3 className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{release.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-primary">{release.plays.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">plays</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No play data yet
+                </p>
+              )}
+            </TabsContent>
+            <TabsContent value="donations" className="space-y-3">
+              {topReleases?.topByDonations?.filter(r => r.donations > 0).length ? (
+                topReleases.topByDonations.filter(r => r.donations > 0).map((release, index) => (
+                  <div
+                    key={release.id}
+                    className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      index === 0 ? "bg-yellow-500 text-yellow-950" :
+                      index === 1 ? "bg-slate-300 text-slate-800" :
+                      index === 2 ? "bg-amber-600 text-amber-100" :
+                      "bg-muted-foreground/20 text-muted-foreground"
+                    }`}>
+                      {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
+                    </div>
+                    <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                      {release.coverArt ? (
+                        <img 
+                          src={release.coverArt} 
+                          alt={release.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Disc3 className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{release.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{release.artist}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-emerald-500">${(release.donations / 100).toFixed(0)}</p>
+                      <p className="text-xs text-muted-foreground">earned</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No donation data yet
+                </p>
+              )}
+            </TabsContent>
+          </Tabs>
         </motion.div>
 
         {/* Recent Activity */}
