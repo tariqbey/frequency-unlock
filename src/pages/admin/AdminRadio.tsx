@@ -52,6 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { RadioScheduleManager } from "@/components/admin/RadioScheduleManager";
+import { RadioPlaylistManager } from "@/components/admin/RadioPlaylistManager";
 
 const MOOD_OPTIONS = [
   { value: "", label: "No mood", icon: <Radio className="w-4 h-4" /> },
@@ -370,8 +371,12 @@ export default function AdminRadio() {
         <Tabs defaultValue="tracks" className="space-y-6">
           <TabsList>
             <TabsTrigger value="tracks" className="gap-2">
-              <ListMusic className="w-4 h-4" />
+              <Music className="w-4 h-4" />
               Track Library
+            </TabsTrigger>
+            <TabsTrigger value="playlists" className="gap-2">
+              <ListMusic className="w-4 h-4" />
+              Playlists
             </TabsTrigger>
             <TabsTrigger value="schedule" className="gap-2">
               <Calendar className="w-4 h-4" />
@@ -793,6 +798,10 @@ export default function AdminRadio() {
             </div>
           )}
         </motion.div>
+          </TabsContent>
+
+          <TabsContent value="playlists">
+            <RadioPlaylistManager />
           </TabsContent>
 
           <TabsContent value="schedule">
