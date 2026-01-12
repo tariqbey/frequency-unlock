@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/layout/Navbar";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -21,8 +20,11 @@ import {
   Send,
   Loader2,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { VoteButtons } from "@/components/forum/VoteButtons";
+import { EditThreadDialog } from "@/components/forum/EditThreadDialog";
+import { EditCommentDialog } from "@/components/forum/EditCommentDialog";
 
 interface Thread {
   id: string;
@@ -55,6 +57,8 @@ export default function ForumThread() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [newComment, setNewComment] = useState("");
+  const [editingThread, setEditingThread] = useState(false);
+  const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
   const { data: thread, isLoading: threadLoading } = useQuery({
     queryKey: ["thread", id],
@@ -217,7 +221,20 @@ export default function ForumThread() {
                     )}
                   </div>
 
-                  <h1 className="text-2xl font-bold mb-4">{thread.title}</h1>
+                  <div className="flex items-center justify-between mb-4">
+                    <h1 className="text-2xl font-bold">{thread.title}</h1>
+                    {user?.id === thread.user_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setEditingThread(true)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
                     <div className="flex items-center gap-1">
@@ -331,14 +348,24 @@ export default function ForumThread() {
                                 </p>
                               </div>
                               {user?.id === comment.user_id && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                  onClick={() => deleteComment.mutate(comment.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                    onClick={() => setEditingComment(comment)}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    onClick={() => deleteComment.mutate(comment.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -355,6 +382,25 @@ export default function ForumThread() {
             )}
           </div>
         </motion.div>
+
+        {/* Edit Thread Dialog */}
+        {thread && (
+          <EditThreadDialog
+            open={editingThread}
+            onOpenChange={setEditingThread}
+            thread={thread}
+          />
+        )}
+
+        {/* Edit Comment Dialog */}
+        {editingComment && id && (
+          <EditCommentDialog
+            open={!!editingComment}
+            onOpenChange={(open) => !open && setEditingComment(null)}
+            comment={editingComment}
+            threadId={id}
+          />
+        )}
       </main>
     </div>
   );
