@@ -53,6 +53,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { RadioScheduleManager } from "@/components/admin/RadioScheduleManager";
 import { RadioPlaylistManager } from "@/components/admin/RadioPlaylistManager";
+import { RadioAnalytics } from "@/components/admin/RadioAnalytics";
 
 const MOOD_OPTIONS = [
   { value: "", label: "No mood", icon: <Radio className="w-4 h-4" /> },
@@ -381,6 +382,10 @@ export default function AdminRadio() {
             <TabsTrigger value="schedule" className="gap-2">
               <Calendar className="w-4 h-4" />
               Scheduling
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics
             </TabsTrigger>
           </TabsList>
 
@@ -806,6 +811,10 @@ export default function AdminRadio() {
 
           <TabsContent value="schedule">
             <RadioScheduleManager />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <RadioAnalytics />
           </TabsContent>
         </Tabs>
       </div>
