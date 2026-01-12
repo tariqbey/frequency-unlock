@@ -14,16 +14,485 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          target_content_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          target_content_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          target_content_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      artists: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donations: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          release_id: string
+          status: Database["public"]["Enums"]["donation_status"]
+          stripe_session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          id?: string
+          release_id: string
+          status?: Database["public"]["Enums"]["donation_status"]
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          release_id?: string
+          status?: Database["public"]["Enums"]["donation_status"]
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      download_tokens: {
+        Row: {
+          created_at: string
+          donation_id: string
+          downloads_used: number
+          expires_at: string
+          id: string
+          max_downloads: number
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          donation_id: string
+          downloads_used?: number
+          expires_at: string
+          id?: string
+          max_downloads?: number
+          token: string
+        }
+        Update: {
+          created_at?: string
+          donation_id?: string
+          downloads_used?: number
+          expires_at?: string
+          id?: string
+          max_downloads?: number
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_tokens_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          id: string
+          metadata: Json | null
+          release_id: string | null
+          track_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          id?: string
+          metadata?: Json | null
+          release_id?: string | null
+          track_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          id?: string
+          metadata?: Json | null
+          release_id?: string | null
+          track_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forums: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          artist_id: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["profile_status"]
+          user_id: string
+        }
+        Insert: {
+          artist_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["profile_status"]
+          user_id: string
+        }
+        Update: {
+          artist_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["profile_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      releases: {
+        Row: {
+          artist_id: string
+          cover_art_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean
+          published_at: string | null
+          streaming_requires_donation: boolean
+          suggested_price_cents: number | null
+          title: string
+          type: Database["public"]["Enums"]["release_type"]
+        }
+        Insert: {
+          artist_id: string
+          cover_art_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          streaming_requires_donation?: boolean
+          suggested_price_cents?: number | null
+          title: string
+          type?: Database["public"]["Enums"]["release_type"]
+        }
+        Update: {
+          artist_id?: string
+          cover_art_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          streaming_requires_donation?: boolean
+          suggested_price_cents?: number | null
+          title?: string
+          type?: Database["public"]["Enums"]["release_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "releases_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      threads: {
+        Row: {
+          body: string
+          created_at: string
+          forum_id: string
+          id: string
+          pinned: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          forum_id: string
+          id?: string
+          pinned?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          forum_id?: string
+          id?: string
+          pinned?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threads_forum_id_fkey"
+            columns: ["forum_id"]
+            isOneToOne: false
+            referencedRelation: "forums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_commentary: {
+        Row: {
+          commentary_audio_path: string | null
+          commentary_text: string
+          created_at: string
+          id: string
+          timestamp_notes_json: Json | null
+          track_id: string
+          updated_at: string
+        }
+        Insert: {
+          commentary_audio_path?: string | null
+          commentary_text: string
+          created_at?: string
+          id?: string
+          timestamp_notes_json?: Json | null
+          track_id: string
+          updated_at?: string
+        }
+        Update: {
+          commentary_audio_path?: string | null
+          commentary_text?: string
+          created_at?: string
+          id?: string
+          timestamp_notes_json?: Json | null
+          track_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_commentary_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: true
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracks: {
+        Row: {
+          audio_path: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          release_id: string
+          title: string
+          track_number: number
+        }
+        Insert: {
+          audio_path: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          release_id: string
+          title: string
+          track_number?: number
+        }
+        Update: {
+          audio_path?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          release_id?: string
+          title?: string
+          track_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracks_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_artist_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_user_active: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "artist" | "moderator" | "user"
+      donation_status: "pending" | "paid" | "failed" | "refunded"
+      event_type:
+        | "play_start"
+        | "play_complete"
+        | "download"
+        | "donation_start"
+        | "donation_paid"
+        | "thread_post"
+        | "comment_post"
+      profile_status: "active" | "suspended"
+      release_type: "album" | "single" | "ep"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +619,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "artist", "moderator", "user"],
+      donation_status: ["pending", "paid", "failed", "refunded"],
+      event_type: [
+        "play_start",
+        "play_complete",
+        "download",
+        "donation_start",
+        "donation_paid",
+        "thread_post",
+        "comment_post",
+      ],
+      profile_status: ["active", "suspended"],
+      release_type: ["album", "single", "ep"],
+    },
   },
 } as const
