@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { TrackList } from "@/components/release/TrackList";
 import { DonationBox } from "@/components/release/DonationBox";
 import { CommentarySection } from "@/components/release/CommentarySection";
+import { ReleaseComments } from "@/components/release/ReleaseComments";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { useFullAlbumListen } from "@/hooks/useFullAlbumListen";
 import {
   ArrowLeft,
   Disc3,
@@ -16,6 +19,7 @@ import {
   Play,
   Share2,
   Loader2,
+  Headphones,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -56,8 +60,9 @@ interface Release {
 export default function Release() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { play } = usePlayer();
+  const { activeSession, hasCompletedListen, startFullListenSession } = useFullAlbumListen();
   const [activeCommentaryTrackId, setActiveCommentaryTrackId] = useState<string | null>(null);
-
   // Fetch release data
   const { data: release, isLoading } = useQuery({
     queryKey: ["release", id],
@@ -140,6 +145,47 @@ export default function Release() {
     ep: "EP",
   };
 
+  const trackIds = release?.tracks?.map((t) => t.id) || [];
+
+  const handlePlayAll = () => {
+    if (!release?.tracks?.length) return;
+
+    const playerTracks = release.tracks.map((track) => ({
+      id: track.id,
+      title: track.title,
+      track_number: track.track_number,
+      audio_path: track.audio_path,
+      duration_seconds: track.duration_seconds,
+      release: {
+        id: release.id,
+        title: release.title,
+        cover_art_url: release.cover_art_url,
+        artist: { name: release.artist.name },
+      },
+    }));
+
+    play(playerTracks[0], playerTracks);
+  };
+
+  const handleStartFullListen = () => {
+    if (!release?.tracks?.length) return;
+
+    const playerTracks = release.tracks.map((track) => ({
+      id: track.id,
+      title: track.title,
+      track_number: track.track_number,
+      audio_path: track.audio_path,
+      duration_seconds: track.duration_seconds,
+      release: {
+        id: release.id,
+        title: release.title,
+        cover_art_url: release.cover_art_url,
+        artist: { name: release.artist.name },
+      },
+    }));
+
+    play(playerTracks[0], playerTracks);
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -245,10 +291,24 @@ export default function Release() {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-3 mt-8">
-                <Button variant="hero" size="lg" className="gap-2">
+                <Button variant="hero" size="lg" className="gap-2" onClick={handlePlayAll}>
                   <Play className="w-4 h-4" />
                   Play All
                 </Button>
+                {!hasCompletedListen(release.id) && !activeSession && (
+                  <Button
+                    variant="glass"
+                    size="lg"
+                    className="gap-2"
+                    onClick={() => {
+                      startFullListenSession(release.id, trackIds);
+                      handleStartFullListen();
+                    }}
+                  >
+                    <Headphones className="w-4 h-4" />
+                    Full Album Mode
+                  </Button>
+                )}
                 <Button variant="glass" size="lg" className="gap-2">
                   <Share2 className="w-4 h-4" />
                   Share
@@ -287,6 +347,15 @@ export default function Release() {
               </div>
 
               {/* Commentary section */}
+              {/* Album Comments Section */}
+              <div className="mt-8">
+                <ReleaseComments
+                  releaseId={release.id}
+                  releaseTitle={release.title}
+                  trackIds={trackIds}
+                  onStartFullListen={handleStartFullListen}
+                />
+              </div>
               {activeCommentaryTrackId && activeCommentary && (
                 <div className="mt-6">
                   <CommentarySection
