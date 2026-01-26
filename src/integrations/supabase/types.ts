@@ -44,6 +44,35 @@ export type Database = {
         }
         Relationships: []
       }
+      album_listen_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          release_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          release_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          release_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "album_listen_completions_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artists: {
         Row: {
           bio: string | null
@@ -76,6 +105,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          release_id: string | null
           thread_id: string
           user_id: string
         }
@@ -83,6 +113,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          release_id?: string | null
           thread_id: string
           user_id: string
         }
@@ -90,10 +121,18 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          release_id?: string | null
           thread_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_thread_id_fkey"
             columns: ["thread_id"]
@@ -676,6 +715,10 @@ export type Database = {
     }
     Functions: {
       get_user_artist_id: { Args: { _user_id: string }; Returns: string }
+      has_completed_album_listen: {
+        Args: { _release_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

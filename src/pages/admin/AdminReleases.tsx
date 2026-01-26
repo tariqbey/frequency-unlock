@@ -30,9 +30,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { AlbumUploader } from "@/components/admin/AlbumUploader";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Disc3, Loader2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload } from "lucide-react";
 
 interface Release {
   id: string;
@@ -73,9 +74,9 @@ export default function AdminReleases() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [albumUploaderOpen, setAlbumUploaderOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReleaseForm>(initialForm);
-
   // Fetch releases
   const { data: releases, isLoading } = useQuery({
     queryKey: ["admin-releases"],
@@ -221,13 +222,18 @@ export default function AdminReleases() {
               Manage albums, singles, and EPs
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setForm(initialForm)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Release
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setAlbumUploaderOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Mass Upload Album
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setForm(initialForm)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Release
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>
@@ -372,6 +378,10 @@ export default function AdminReleases() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
+
+          {/* Album Uploader Dialog */}
+          <AlbumUploader open={albumUploaderOpen} onOpenChange={setAlbumUploaderOpen} />
         </div>
 
         {/* Search */}

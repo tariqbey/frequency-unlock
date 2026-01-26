@@ -26,6 +26,7 @@ interface PlayerContextType {
   volume: number;
   isMuted: boolean;
   isExpanded: boolean;
+  isFullListenMode: boolean;
   play: (track: Track, queue?: Track[]) => void;
   pause: () => void;
   resume: () => void;
@@ -36,6 +37,8 @@ interface PlayerContextType {
   toggleMute: () => void;
   toggleExpanded: () => void;
   addToQueue: (track: Track) => void;
+  setFullListenMode: (enabled: boolean) => void;
+  onTrackComplete: (callback: (trackId: string) => void) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -140,7 +143,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const [isFullListenMode, setIsFullListenModeState] = useState(false);
+  const trackCompleteCallbackRef = useRef<((trackId: string) => void) | null>(null);
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
@@ -152,12 +156,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleDurationChange = () => setDuration(audio.duration || 0);
     const handleEnded = () => {
+      // Notify that track completed naturally (for full listen mode)
+      if (currentTrack && trackCompleteCallbackRef.current) {
+        trackCompleteCallbackRef.current(currentTrack.id);
+      }
+
       // Auto-play next track
       const currentIndex = queue.findIndex(t => t.id === currentTrack?.id);
       if (currentIndex < queue.length - 1) {
         play(queue[currentIndex + 1], queue);
       } else {
         setIsPlaying(false);
+        setIsFullListenModeState(false);
       }
     };
     const handlePlay = () => setIsPlaying(true);
@@ -255,6 +265,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setQueue(prev => [...prev, track]);
   }, []);
 
+  const setFullListenMode = useCallback((enabled: boolean) => {
+    setIsFullListenModeState(enabled);
+  }, []);
+
+  const onTrackComplete = useCallback((callback: (trackId: string) => void) => {
+    trackCompleteCallbackRef.current = callback;
+  }, []);
   return (
     <PlayerContext.Provider
       value={{
@@ -266,6 +283,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         volume,
         isMuted,
         isExpanded,
+        isFullListenMode,
         play,
         pause,
         resume,
@@ -276,6 +294,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         toggleMute,
         toggleExpanded,
         addToQueue,
+        setFullListenMode,
+        onTrackComplete,
       }}
     >
       {children}
