@@ -21,8 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { ArtistAlbumUploader } from "@/components/admin/ArtistAlbumUploader";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, User, Loader2, Search, Disc3, Star } from "lucide-react";
@@ -183,84 +185,110 @@ export default function AdminArtists() {
                 Add Artist
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit Artist" : "Add Artist"}
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Artist name"
-                  />
-                </div>
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Artist Details</TabsTrigger>
+                  <TabsTrigger value="albums" disabled={!editingId && !form.name}>
+                    Albums & Releases
+                  </TabsTrigger>
+                </TabsList>
 
-                <div>
-                  <Label>Profile Image</Label>
-                  <FileUpload
-                    bucket="artwork"
-                    currentUrl={form.image_url}
-                    onUpload={(url) => setForm({ ...form, image_url: url })}
-                    onRemove={() => setForm({ ...form, image_url: "" })}
-                    maxSizeMB={5}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={form.bio}
-                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                    placeholder="Tell the artist's story..."
-                    rows={5}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
-                  <div className="flex items-center gap-3">
-                    <Star className="w-5 h-5 text-yellow-500" />
+                <TabsContent value="details" className="space-y-4 mt-4">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <Label htmlFor="is_featured" className="cursor-pointer">Featured Artist</Label>
-                      <p className="text-xs text-muted-foreground">Show in homepage carousel</p>
+                      <Label htmlFor="name">Name</Label>
+                      <Input
+                        id="name"
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        placeholder="Artist name"
+                      />
                     </div>
-                  </div>
-                  <Switch
-                    id="is_featured"
-                    checked={form.is_featured}
-                    onCheckedChange={(checked) => setForm({ ...form, is_featured: checked })}
-                  />
-                </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCloseDialog}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    disabled={saveMutation.isPending}
-                  >
-                    {saveMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : editingId ? (
-                      "Update"
-                    ) : (
-                      "Create"
-                    )}
-                  </Button>
-                </div>
-              </form>
+                    <div>
+                      <Label>Profile Image</Label>
+                      <FileUpload
+                        bucket="artwork"
+                        currentUrl={form.image_url}
+                        onUpload={(url) => setForm({ ...form, image_url: url })}
+                        onRemove={() => setForm({ ...form, image_url: "" })}
+                        maxSizeMB={5}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        value={form.bio}
+                        onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                        placeholder="Tell the artist's story..."
+                        rows={5}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-center gap-3">
+                        <Star className="w-5 h-5 text-yellow-500" />
+                        <div>
+                          <Label htmlFor="is_featured" className="cursor-pointer">Featured Artist</Label>
+                          <p className="text-xs text-muted-foreground">Show in homepage carousel</p>
+                        </div>
+                      </div>
+                      <Switch
+                        id="is_featured"
+                        checked={form.is_featured}
+                        onCheckedChange={(checked) => setForm({ ...form, is_featured: checked })}
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCloseDialog}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="flex-1"
+                        disabled={saveMutation.isPending}
+                      >
+                        {saveMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : editingId ? (
+                          "Update"
+                        ) : (
+                          "Create"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="albums" className="mt-4">
+                  {editingId ? (
+                    <ArtistAlbumUploader
+                      artistId={editingId}
+                      artistName={form.name}
+                      disabled={saveMutation.isPending}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Disc3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>Save the artist first to add albums</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
         </div>
