@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -5,9 +6,11 @@ import { StatsCard } from "@/components/admin/StatsCard";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { GeoDistributionMap } from "@/components/admin/GeoDistributionMap";
 import { UserEngagementMetrics } from "@/components/admin/UserEngagementMetrics";
+import { AlbumUploader } from "@/components/admin/AlbumUploader";
+import { Button } from "@/components/ui/button";
 import { 
   Disc3, Music, DollarSign, Users, Radio, Mic2, 
-  PlayCircle, Download, Star, TrendingUp, Trophy, Crown
+  PlayCircle, Download, Star, TrendingUp, Trophy, Crown, Upload
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
@@ -39,6 +42,7 @@ const MOOD_CONFIG = [
 ];
 
 export default function AdminDashboard() {
+  const [albumUploaderOpen, setAlbumUploaderOpen] = useState(false);
   // Fetch stats with trends
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
@@ -373,13 +377,26 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="font-display text-3xl font-bold">Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
-            Overview of your music platform
-          </p>
+        {/* Header with Quick Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold">Dashboard</h1>
+            <p className="mt-1 text-muted-foreground">
+              Overview of your music platform
+            </p>
+          </div>
+          <Button 
+            size="lg" 
+            onClick={() => setAlbumUploaderOpen(true)}
+            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            Upload Album
+          </Button>
         </div>
+
+        {/* Album Uploader Dialog */}
+        <AlbumUploader open={albumUploaderOpen} onOpenChange={setAlbumUploaderOpen} />
 
         {/* Primary Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
