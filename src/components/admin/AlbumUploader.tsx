@@ -21,18 +21,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 import {
   Upload,
   X,
   Loader2,
-  Music,
   Image as ImageIcon,
   Disc3,
-  GripVertical,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
+import { SortableTrackList } from "./SortableTrackList";
 
 interface TrackFile {
   id: string;
@@ -120,7 +116,6 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
 
     // Parse track names from filenames
     const newTracks: TrackFile[] = audioFiles.map((file, index) => {
-      // Try to extract track number and title from filename
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
       const trackMatch = nameWithoutExt.match(/^(\d+)[\s\-._]+(.+)$/);
 
@@ -152,28 +147,6 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
   // Remove track
   const removeTrack = (id: string) => {
     setTracks((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Move track up/down
-  const moveTrack = (id: string, direction: "up" | "down") => {
-    const index = tracks.findIndex((t) => t.id === id);
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === tracks.length - 1)
-    ) {
-      return;
-    }
-
-    const newTracks = [...tracks];
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    [newTracks[index], newTracks[swapIndex]] = [newTracks[swapIndex], newTracks[index]];
-
-    // Update track numbers
-    newTracks.forEach((t, i) => {
-      t.trackNumber = i + 1;
-    });
-
-    setTracks(newTracks);
   };
 
   // Upload album
@@ -484,106 +457,20 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
               </Button>
             </div>
 
-            {/* Track list */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {tracks.length === 0 ? (
-                <div className="border border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
-                  <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No tracks added yet</p>
-                  <p className="text-xs mt-1">
-                    Click "Add Tracks" to select audio files
-                  </p>
-                </div>
-              ) : (
-                tracks.map((track, index) => (
-                  <motion.div
-                    key={track.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex items-center gap-3 p-3 rounded-lg border ${
-                      track.uploaded
-                        ? "bg-green-500/10 border-green-500/30"
-                        : track.error
-                        ? "bg-destructive/10 border-destructive/30"
-                        : "bg-muted/50 border-border"
-                    }`}
-                  >
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => moveTrack(track.id, "up")}
-                        disabled={isUploading || index === 0}
-                      >
-                        <ArrowUp className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => moveTrack(track.id, "down")}
-                        disabled={isUploading || index === tracks.length - 1}
-                      >
-                        <ArrowDown className="w-3 h-3" />
-                      </Button>
-                    </div>
-
-                    <span className="w-6 text-center text-sm font-medium text-muted-foreground">
-                      {track.trackNumber}
-                    </span>
-
-                    <div className="flex-1 min-w-0">
-                      <Input
-                        value={track.title}
-                        onChange={(e) => updateTrack(track.id, { title: e.target.value })}
-                        placeholder="Track title"
-                        className="h-8 text-sm"
-                        disabled={isUploading}
-                      />
-                    </div>
-
-                    <Select
-                      value={track.mood}
-                      onValueChange={(v) => updateTrack(track.id, { mood: v })}
-                      disabled={isUploading}
-                    >
-                      <SelectTrigger className="w-24 h-8 text-xs">
-                        <SelectValue placeholder="Mood" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="chill">Chill</SelectItem>
-                        <SelectItem value="energetic">Energetic</SelectItem>
-                        <SelectItem value="focus">Focus</SelectItem>
-                        <SelectItem value="happy">Happy</SelectItem>
-                        <SelectItem value="melancholic">Melancholic</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {track.uploading && (
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    )}
-
-                    {!isUploading && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => removeTrack(track.id)}
-                      >
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    )}
-                  </motion.div>
-                ))
-              )}
+            {/* Track list with drag-and-drop */}
+            <div className="max-h-[400px] overflow-y-auto">
+              <SortableTrackList
+                tracks={tracks}
+                disabled={isUploading}
+                showMood={true}
+                onReorder={setTracks}
+                onUpdateTrack={updateTrack}
+                onRemoveTrack={removeTrack}
+              />
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Tip: Name your files like "01 - Track Title.mp3" for automatic numbering
+              Tip: Drag tracks to reorder. Name files like "01 - Track Title.mp3" for auto-numbering.
             </p>
           </div>
         </div>
