@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,21 +20,31 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   X,
   Loader2,
-  Music,
   Image as ImageIcon,
   Disc3,
-  ArrowUp,
-  ArrowDown,
   Plus,
-  Check,
   Trash2,
+  Pencil,
+  Music,
 } from "lucide-react";
+import { SortableTrackList } from "./SortableTrackList";
 
 interface TrackFile {
   id: string;
@@ -63,6 +73,16 @@ interface AlbumDraft {
   uploadProgress: number;
 }
 
+interface ExistingRelease {
+  id: string;
+  title: string;
+  type: string;
+  cover_art_url: string | null;
+  is_published: boolean;
+  created_at: string;
+  tracks: { id: string; title: string; track_number: number }[];
+}
+
 interface ArtistAlbumUploaderProps {
   artistId: string;
   artistName: string;
@@ -89,8 +109,33 @@ export function ArtistAlbumUploader({ artistId, artistName, disabled }: ArtistAl
   const queryClient = useQueryClient();
   const [albums, setAlbums] = useState<AlbumDraft[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const coverInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const tracksInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  // Fetch existing releases for this artist
+  const { data: existingReleases, isLoading: loadingReleases } = useQuery({
+    queryKey: ["artist-releases", artistId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("releases")
+        .select(`
+          id,
+          title,
+          type,
+          cover_art_url,
+          is_published,
+          created_at,
+          tracks(id, title, track_number)
+        `)
+        .eq("artist_id", artistId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as ExistingRelease[];
+    },
+    enabled: !!artistId,
+  });
 
   const addAlbum = () => {
     setAlbums([...albums, createEmptyAlbum()]);
@@ -185,26 +230,38 @@ export function ArtistAlbumUploader({ artistId, artistName, disabled }: ArtistAl
     );
   };
 
-  const moveTrack = (albumId: string, trackId: string, direction: "up" | "down") => {
-    const album = albums.find((a) => a.id === albumId);
-    if (!album) return;
-
-    const index = album.tracks.findIndex((t) => t.id === trackId);
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === album.tracks.length - 1)
-    ) {
-      return;
-    }
-
-    const newTracks = [...album.tracks];
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    [newTracks[index], newTracks[swapIndex]] = [newTracks[swapIndex], newTracks[index]];
-    newTracks.forEach((t, i) => {
-      t.trackNumber = i + 1;
-    });
-
+  const handleReorderTracks = (albumId: string, newTracks: TrackFile[]) => {
     updateAlbum(albumId, { tracks: newTracks });
+  };
+
+  const deleteExistingRelease = async (releaseId: string) => {
+    setDeletingId(releaseId);
+    try {
+      // Delete tracks first (cascades from FK, but let's be explicit)
+      const { error: tracksError } = await supabase
+        .from("tracks")
+        .delete()
+        .eq("release_id", releaseId);
+
+      if (tracksError) throw tracksError;
+
+      // Delete the release
+      const { error: releaseError } = await supabase
+        .from("releases")
+        .delete()
+        .eq("id", releaseId);
+
+      if (releaseError) throw releaseError;
+
+      queryClient.invalidateQueries({ queryKey: ["artist-releases", artistId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-releases"] });
+      toast.success("Album deleted successfully");
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error(error.message || "Failed to delete album");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const uploadAllAlbums = async () => {
@@ -299,350 +356,399 @@ export function ArtistAlbumUploader({ artistId, artistName, disabled }: ArtistAl
       }
     }
 
-    queryClient.invalidateQueries({ queryKey: ["admin-artists"] });
+    queryClient.invalidateQueries({ queryKey: ["artist-releases", artistId] });
     queryClient.invalidateQueries({ queryKey: ["admin-releases"] });
     setIsUploading(false);
   };
 
   const pendingAlbums = albums.filter((a) => !a.uploaded);
-  const uploadedAlbums = albums.filter((a) => a.uploaded);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">Albums & Releases</h3>
-          <p className="text-xs text-muted-foreground">
-            Add albums with tracks for {artistName}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addAlbum}
-          disabled={disabled || isUploading}
-          className="gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Album
-        </Button>
-      </div>
+    <Tabs defaultValue="existing" className="w-full">
+      <TabsList className="grid w-full grid-cols-2 mb-4">
+        <TabsTrigger value="existing">
+          Existing Albums ({existingReleases?.length || 0})
+        </TabsTrigger>
+        <TabsTrigger value="new">
+          New Uploads ({pendingAlbums.length})
+        </TabsTrigger>
+      </TabsList>
 
-      {albums.length === 0 ? (
-        <div className="border border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
-          <Disc3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No albums added yet</p>
-          <p className="text-xs mt-1">Click "Add Album" to start building the discography</p>
-        </div>
-      ) : (
-        <Accordion type="multiple" className="space-y-2">
-          {albums.map((album) => (
-            <AccordionItem
-              key={album.id}
-              value={album.id}
-              className="border border-border rounded-lg overflow-hidden"
-            >
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex items-center gap-3 w-full">
-                  {album.coverPreview ? (
-                    <img
-                      src={album.coverPreview}
-                      alt="Cover"
-                      className="w-10 h-10 rounded object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                      <Disc3 className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 text-left">
-                    <p className="font-medium">
-                      {album.title || "Untitled Album"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {album.tracks.length} tracks • {album.type}
-                      {album.uploaded && (
-                        <span className="ml-2 text-green-500">✓ Uploaded</span>
-                      )}
-                    </p>
+      {/* Existing Albums Tab */}
+      <TabsContent value="existing" className="space-y-4">
+        {loadingReleases ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : existingReleases?.length === 0 ? (
+          <div className="border border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
+            <Disc3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No albums found for {artistName}</p>
+            <p className="text-xs mt-1">Switch to "New Uploads" to add albums</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {existingReleases?.map((release) => (
+              <div
+                key={release.id}
+                className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card"
+              >
+                {release.cover_art_url ? (
+                  <img
+                    src={release.cover_art_url}
+                    alt={release.title}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
+                    <Disc3 className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  {album.uploading && (
-                    <div className="w-24">
-                      <Progress value={album.uploadProgress} className="h-2" />
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium truncate">{release.title}</h4>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span className="capitalize">{release.type}</span>
+                    <span>•</span>
+                    <span>{release.tracks?.length || 0} tracks</span>
+                    <span>•</span>
+                    <span className={release.is_published ? "text-green-500" : "text-yellow-500"}>
+                      {release.is_published ? "Published" : "Draft"}
+                    </span>
+                  </div>
+                  {release.tracks && release.tracks.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {release.tracks.slice(0, 3).map((track) => (
+                        <span
+                          key={track.id}
+                          className="text-xs bg-muted px-2 py-0.5 rounded"
+                        >
+                          {track.track_number}. {track.title}
+                        </span>
+                      ))}
+                      {release.tracks.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{release.tracks.length - 3} more
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
-                  {/* Album metadata */}
-                  <div className="space-y-3">
-                    <div>
-                      <Label>Album Title *</Label>
-                      <Input
-                        value={album.title}
-                        onChange={(e) => updateAlbum(album.id, { title: e.target.value })}
-                        placeholder="Enter album title"
-                        disabled={album.uploaded || album.uploading}
-                      />
-                    </div>
 
-                    <div>
-                      <Label>Release Type</Label>
-                      <Select
-                        value={album.type}
-                        onValueChange={(v) => updateAlbum(album.id, { type: v as "album" | "single" | "ep" })}
-                        disabled={album.uploaded || album.uploading}
+                <div className="flex items-center gap-2">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        disabled={deletingId === release.id}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="album">Album</SelectItem>
-                          <SelectItem value="single">Single</SelectItem>
-                          <SelectItem value="ep">EP</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        {deletingId === release.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Album</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{release.title}"? This will also delete all {release.tracks?.length || 0} tracks. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteExistingRelease(release.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+
+      {/* New Uploads Tab */}
+      <TabsContent value="new" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">Upload New Albums</h3>
+            <p className="text-xs text-muted-foreground">
+              Add albums with tracks for {artistName}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addAlbum}
+            disabled={disabled || isUploading}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Album
+          </Button>
+        </div>
+
+        {albums.length === 0 ? (
+          <div className="border border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
+            <Disc3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No albums queued for upload</p>
+            <p className="text-xs mt-1">Click "Add Album" to start</p>
+          </div>
+        ) : (
+          <Accordion type="multiple" className="space-y-2">
+            {albums.map((album) => (
+              <AccordionItem
+                key={album.id}
+                value={album.id}
+                className="border border-border rounded-lg overflow-hidden"
+              >
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-3 w-full">
+                    {album.coverPreview ? (
+                      <img
+                        src={album.coverPreview}
+                        alt="Cover"
+                        className="w-10 h-10 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                        <Disc3 className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 text-left">
+                      <p className="font-medium">
+                        {album.title || "Untitled Album"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {album.tracks.length} tracks • {album.type}
+                        {album.uploaded && (
+                          <span className="ml-2 text-green-500">✓ Uploaded</span>
+                        )}
+                      </p>
+                    </div>
+                    {album.uploading && (
+                      <div className="w-24">
+                        <Progress value={album.uploadProgress} className="h-2" />
+                      </div>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+                    {/* Album metadata */}
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Album Title *</Label>
+                        <Input
+                          value={album.title}
+                          onChange={(e) => updateAlbum(album.id, { title: e.target.value })}
+                          placeholder="Enter album title"
+                          disabled={album.uploaded || album.uploading}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Release Type</Label>
+                        <Select
+                          value={album.type}
+                          onValueChange={(v) => updateAlbum(album.id, { type: v as "album" | "single" | "ep" })}
+                          disabled={album.uploaded || album.uploading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="album">Album</SelectItem>
+                            <SelectItem value="single">Single</SelectItem>
+                            <SelectItem value="ep">EP</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Description</Label>
+                        <Textarea
+                          value={album.description}
+                          onChange={(e) => updateAlbum(album.id, { description: e.target.value })}
+                          placeholder="Album description"
+                          rows={2}
+                          disabled={album.uploaded || album.uploading}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Suggested Price ($)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={album.suggestedPrice}
+                          onChange={(e) => updateAlbum(album.id, { suggestedPrice: parseFloat(e.target.value) || 0 })}
+                          disabled={album.uploaded || album.uploading}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label>Publish immediately</Label>
+                        <Switch
+                          checked={album.isPublished}
+                          onCheckedChange={(v) => updateAlbum(album.id, { isPublished: v })}
+                          disabled={album.uploaded || album.uploading}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label>Streaming requires donation</Label>
+                        <Switch
+                          checked={album.streamingRequiresDonation}
+                          onCheckedChange={(v) => updateAlbum(album.id, { streamingRequiresDonation: v })}
+                          disabled={album.uploaded || album.uploading}
+                        />
+                      </div>
+
+                      {/* Cover Art */}
+                      <div>
+                        <Label>Cover Art</Label>
+                        <input
+                          ref={(el) => (coverInputRefs.current[album.id] = el)}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleCoverSelect(album.id, e)}
+                          className="hidden"
+                          disabled={album.uploaded || album.uploading}
+                        />
+                        {album.coverPreview ? (
+                          <div className="relative inline-block mt-2">
+                            <img
+                              src={album.coverPreview}
+                              alt="Cover preview"
+                              className="w-24 h-24 rounded-lg object-cover border border-border"
+                            />
+                            {!album.uploaded && !album.uploading && (
+                              <button
+                                type="button"
+                                onClick={() => updateAlbum(album.id, { coverFile: null, coverPreview: null })}
+                                className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => coverInputRefs.current[album.id]?.click()}
+                            disabled={album.uploaded || album.uploading}
+                            className="mt-2 gap-2"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                            Upload Cover
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
-                    <div>
-                      <Label>Description</Label>
-                      <Textarea
-                        value={album.description}
-                        onChange={(e) => updateAlbum(album.id, { description: e.target.value })}
-                        placeholder="Album description"
-                        rows={2}
-                        disabled={album.uploaded || album.uploading}
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Suggested Price ($)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={album.suggestedPrice}
-                        onChange={(e) => updateAlbum(album.id, { suggestedPrice: parseFloat(e.target.value) || 0 })}
-                        disabled={album.uploaded || album.uploading}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Label>Publish immediately</Label>
-                      <Switch
-                        checked={album.isPublished}
-                        onCheckedChange={(v) => updateAlbum(album.id, { isPublished: v })}
-                        disabled={album.uploaded || album.uploading}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Label>Streaming requires donation</Label>
-                      <Switch
-                        checked={album.streamingRequiresDonation}
-                        onCheckedChange={(v) => updateAlbum(album.id, { streamingRequiresDonation: v })}
-                        disabled={album.uploaded || album.uploading}
-                      />
-                    </div>
-
-                    {/* Cover Art */}
-                    <div>
-                      <Label>Cover Art</Label>
-                      <input
-                        ref={(el) => (coverInputRefs.current[album.id] = el)}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleCoverSelect(album.id, e)}
-                        className="hidden"
-                        disabled={album.uploaded || album.uploading}
-                      />
-                      {album.coverPreview ? (
-                        <div className="relative inline-block mt-2">
-                          <img
-                            src={album.coverPreview}
-                            alt="Cover preview"
-                            className="w-24 h-24 rounded-lg object-cover border border-border"
-                          />
-                          {!album.uploaded && !album.uploading && (
-                            <button
-                              type="button"
-                              onClick={() => updateAlbum(album.id, { coverFile: null, coverPreview: null })}
-                              className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ) : (
+                    {/* Tracks */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label>Tracks ({album.tracks.length})</Label>
+                        <input
+                          ref={(el) => (tracksInputRefs.current[album.id] = el)}
+                          type="file"
+                          accept="audio/*"
+                          multiple
+                          onChange={(e) => handleTracksSelect(album.id, e)}
+                          className="hidden"
+                          disabled={album.uploaded || album.uploading}
+                        />
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => coverInputRefs.current[album.id]?.click()}
+                          onClick={() => tracksInputRefs.current[album.id]?.click()}
                           disabled={album.uploaded || album.uploading}
-                          className="mt-2 gap-2"
+                          className="gap-2"
                         >
-                          <ImageIcon className="w-4 h-4" />
-                          Upload Cover
+                          <Upload className="w-4 h-4" />
+                          Add Tracks
                         </Button>
-                      )}
+                      </div>
+
+                      <div className="max-h-[300px] overflow-y-auto">
+                        <SortableTrackList
+                          tracks={album.tracks}
+                          disabled={album.uploaded || album.uploading}
+                          onReorder={(newTracks) => handleReorderTracks(album.id, newTracks)}
+                          onUpdateTrack={(trackId, updates) => updateTrack(album.id, trackId, updates)}
+                          onRemoveTrack={(trackId) => removeTrack(album.id, trackId)}
+                          emptyMessage="No tracks added"
+                        />
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        Drag tracks to reorder
+                      </p>
                     </div>
                   </div>
 
-                  {/* Tracks */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Tracks ({album.tracks.length})</Label>
-                      <input
-                        ref={(el) => (tracksInputRefs.current[album.id] = el)}
-                        type="file"
-                        accept="audio/*"
-                        multiple
-                        onChange={(e) => handleTracksSelect(album.id, e)}
-                        className="hidden"
-                        disabled={album.uploaded || album.uploading}
-                      />
+                  {/* Album actions */}
+                  {!album.uploaded && (
+                    <div className="flex justify-end mt-4 pt-4 border-t border-border">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
-                        onClick={() => tracksInputRefs.current[album.id]?.click()}
-                        disabled={album.uploaded || album.uploading}
+                        onClick={() => removeAlbum(album.id)}
+                        disabled={album.uploading}
                         className="gap-2"
                       >
-                        <Upload className="w-4 h-4" />
-                        Add Tracks
+                        <Trash2 className="w-4 h-4" />
+                        Remove Album
                       </Button>
                     </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
 
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {album.tracks.length === 0 ? (
-                        <div className="border border-dashed border-border rounded-lg p-4 text-center text-muted-foreground">
-                          <Music className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                          <p className="text-xs">No tracks added</p>
-                        </div>
-                      ) : (
-                        <AnimatePresence>
-                          {album.tracks.map((track, index) => (
-                            <motion.div
-                              key={track.id}
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className={`border rounded-lg p-2 ${
-                                track.uploaded
-                                  ? "border-green-500/50 bg-green-500/5"
-                                  : track.uploading
-                                  ? "border-primary/50 bg-primary/5"
-                                  : "border-border"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground w-6 text-center">
-                                  {track.trackNumber}
-                                </span>
-                                <Input
-                                  value={track.title}
-                                  onChange={(e) =>
-                                    updateTrack(album.id, track.id, { title: e.target.value })
-                                  }
-                                  className="flex-1 h-8 text-sm"
-                                  placeholder="Track title"
-                                  disabled={track.uploaded || track.uploading}
-                                />
-                                {track.uploading ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                                ) : track.uploaded ? (
-                                  <Check className="w-4 h-4 text-green-500" />
-                                ) : (
-                                  <>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => moveTrack(album.id, track.id, "up")}
-                                      disabled={index === 0}
-                                    >
-                                      <ArrowUp className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => moveTrack(album.id, track.id, "down")}
-                                      disabled={index === album.tracks.length - 1}
-                                    >
-                                      <ArrowDown className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 text-destructive"
-                                      onClick={() => removeTrack(album.id, track.id)}
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Album actions */}
-                {!album.uploaded && (
-                  <div className="flex justify-end mt-4 pt-4 border-t border-border">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeAlbum(album.id)}
-                      disabled={album.uploading}
-                      className="gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Remove Album
-                    </Button>
-                  </div>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      )}
-
-      {/* Upload all button */}
-      {pendingAlbums.length > 0 && (
-        <div className="flex justify-end pt-4 border-t border-border">
-          <Button
-            type="button"
-            onClick={uploadAllAlbums}
-            disabled={isUploading || pendingAlbums.every((a) => !a.title || a.tracks.length === 0)}
-            className="gap-2"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                Upload {pendingAlbums.length} Album{pendingAlbums.length > 1 ? "s" : ""}
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-    </div>
+        {/* Upload all button */}
+        {pendingAlbums.length > 0 && (
+          <div className="flex justify-end pt-4 border-t border-border">
+            <Button
+              type="button"
+              onClick={uploadAllAlbums}
+              disabled={isUploading || pendingAlbums.every((a) => !a.title || a.tracks.length === 0)}
+              className="gap-2"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload {pendingAlbums.length} Album{pendingAlbums.length > 1 ? "s" : ""}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }
