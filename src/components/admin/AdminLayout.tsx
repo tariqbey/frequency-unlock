@@ -23,6 +23,7 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/applications", icon: UserCircle, label: "Applications" },
   { href: "/admin/artists", icon: UserCircle, label: "Artists" },
   { href: "/admin/releases", icon: Disc3, label: "Releases" },
   { href: "/admin/tracks", icon: Music, label: "Tracks" },

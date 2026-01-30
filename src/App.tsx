@@ -25,9 +25,11 @@ import AdminTracks from "./pages/admin/AdminTracks";
 import AdminRadio from "./pages/admin/AdminRadio";
 import AdminDonations from "./pages/admin/AdminDonations";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminApplications from "./pages/admin/AdminApplications";
 import ArtistDashboard from "./pages/artist/ArtistDashboard";
 import ArtistReleases from "./pages/artist/ArtistReleases";
 import ArtistTracks from "./pages/artist/ArtistTracks";
+import ArtistSignup from "./pages/ArtistSignup";
 import Settings from "./pages/Settings";
 import Radio from "./pages/Radio";
 import NotFound from "./pages/NotFound";
@@ -76,6 +78,7 @@ const App = () => (
                 <Route path="/forum/new" element={<ForumNewThread />} />
                 <Route path="/forum/thread/:id" element={<ForumThread />} />
                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/applications" element={<AdminRoute><AdminApplications /></AdminRoute>} />
                 <Route path="/admin/artists" element={<AdminRoute><AdminArtists /></AdminRoute>} />
                 <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />
                 <Route path="/admin/tracks" element={<AdminRoute><AdminTracks /></AdminRoute>} />
@@ -85,6 +88,7 @@ const App = () => (
                 <Route path="/artist" element={<ArtistRoute><ArtistDashboard /></ArtistRoute>} />
                 <Route path="/artist/releases" element={<ArtistRoute><ArtistReleases /></ArtistRoute>} />
                 <Route path="/artist/tracks" element={<ArtistRoute><ArtistTracks /></ArtistRoute>} />
+                <Route path="/artist-signup" element={<ArtistSignup />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

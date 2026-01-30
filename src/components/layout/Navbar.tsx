@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Logo } from "./Logo";
+import { MobileMenu } from "./MobileMenu";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, Music, MessageSquare, Shield, Download, Disc3, Radio } from "lucide-react";
+import { User, Settings, LogOut, Music, MessageSquare, Shield, Download, Disc3, Radio, Mic2 } from "lucide-react";
 
 const navLinks = [
   { href: "/library", label: "Library", icon: Music },
@@ -34,10 +35,13 @@ export function Navbar() {
       animate={{ opacity: 1, y: 0 }}
       className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl"
     >
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-20 items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/">
-            <Logo size="sm" />
+          {/* Mobile Menu */}
+          <MobileMenu />
+          
+          <Link to="/" className="flex items-center">
+            <Logo size="lg" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -110,6 +114,12 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" asChild className="hidden sm:flex">
+                <Link to="/artist-signup" className="gap-2">
+                  <Mic2 className="w-4 h-4" />
+                  For Artists
+                </Link>
+              </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/auth">Sign In</Link>
               </Button>
