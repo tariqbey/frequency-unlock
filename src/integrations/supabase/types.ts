@@ -73,6 +73,51 @@ export type Database = {
           },
         ]
       }
+      artist_applications: {
+        Row: {
+          artist_name: string
+          bio: string | null
+          created_at: string
+          id: string
+          portfolio_url: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sample_tracks_urls: string[] | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artist_name: string
+          bio?: string | null
+          created_at?: string
+          id?: string
+          portfolio_url?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sample_tracks_urls?: string[] | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artist_name?: string
+          bio?: string | null
+          created_at?: string
+          id?: string
+          portfolio_url?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sample_tracks_urls?: string[] | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       artists: {
         Row: {
           bio: string | null
@@ -533,6 +578,7 @@ export type Database = {
       }
       releases: {
         Row: {
+          approval_status: Database["public"]["Enums"]["application_status"]
           artist_id: string
           cover_art_url: string | null
           created_at: string
@@ -540,12 +586,16 @@ export type Database = {
           id: string
           is_published: boolean
           published_at: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           streaming_requires_donation: boolean
           suggested_price_cents: number | null
           title: string
           type: Database["public"]["Enums"]["release_type"]
         }
         Insert: {
+          approval_status?: Database["public"]["Enums"]["application_status"]
           artist_id: string
           cover_art_url?: string | null
           created_at?: string
@@ -553,12 +603,16 @@ export type Database = {
           id?: string
           is_published?: boolean
           published_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           streaming_requires_donation?: boolean
           suggested_price_cents?: number | null
           title: string
           type?: Database["public"]["Enums"]["release_type"]
         }
         Update: {
+          approval_status?: Database["public"]["Enums"]["application_status"]
           artist_id?: string
           cover_art_url?: string | null
           created_at?: string
@@ -566,6 +620,9 @@ export type Database = {
           id?: string
           is_published?: boolean
           published_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           streaming_requires_donation?: boolean
           suggested_price_cents?: number | null
           title?: string
@@ -577,6 +634,48 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shares: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          release_id: string | null
+          track_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          release_id?: string | null
+          track_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          release_id?: string | null
+          track_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shares_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shares_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
             referencedColumns: ["id"]
           },
         ]
@@ -788,6 +887,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "artist" | "moderator" | "user"
+      application_status: "pending" | "approved" | "rejected"
       donation_status: "pending" | "paid" | "failed" | "refunded"
       event_type:
         | "play_start"
@@ -927,6 +1027,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "artist", "moderator", "user"],
+      application_status: ["pending", "approved", "rejected"],
       donation_status: ["pending", "paid", "failed", "refunded"],
       event_type: [
         "play_start",
