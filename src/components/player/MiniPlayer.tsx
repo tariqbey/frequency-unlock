@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { AudioVisualizer } from "./AudioVisualizer";
 import {
   Play,
   Pause,
@@ -49,16 +50,25 @@ export function MiniPlayer() {
       exit={{ y: 100 }}
       className="player-bar"
     >
-      {/* Progress bar at top */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
+      {/* Progress bar at top - clickable for seeking */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          seek(percent * duration);
+        }}
+      >
         <motion.div
           className="h-full bg-gradient-primary"
           style={{ width: `${progress}%` }}
         />
+        {/* Hover indicator */}
+        <div className="absolute top-0 h-1 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       <div className="container flex items-center h-20 gap-4">
-        {/* Track info */}
+        {/* Track info with album art */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
             onClick={toggleExpanded}
@@ -78,6 +88,13 @@ export function MiniPlayer() {
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <ChevronUp className="w-5 h-5" />
             </div>
+            
+            {/* Mini visualizer on album art when playing */}
+            {isPlaying && (
+              <div className="absolute bottom-1 left-1 right-1 h-3">
+                <AudioVisualizer barCount={10} variant="wave" />
+              </div>
+            )}
           </button>
 
           <div className="min-w-0">

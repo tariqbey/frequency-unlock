@@ -27,6 +27,8 @@ interface PlayerContextType {
   isMuted: boolean;
   isExpanded: boolean;
   isFullListenMode: boolean;
+  audioContext: AudioContext | null;
+  analyser: AnalyserNode | null;
   play: (track: Track, queue?: Track[]) => void;
   pause: () => void;
   resume: () => void;
@@ -43,10 +45,9 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-// Get user's country code from timezone or IP
+// Get user's country code from timezone
 async function getUserCountryCode(): Promise<string | null> {
   try {
-    // Try to get country from timezone
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const timezoneToCountry: Record<string, string> = {
       "America/New_York": "USA",
@@ -107,7 +108,6 @@ async function getUserCountryCode(): Promise<string | null> {
       "Europe/Bucharest": "ROU",
       "Europe/Kiev": "UKR",
     };
-
     return timezoneToCountry[timezone] || null;
   } catch {
     return null;
@@ -133,8 +133,43 @@ async function logPlayEvent(track: Track, userId: string | null) {
   });
 }
 
+// Update Media Session API for lock screen controls
+function updateMediaSession(track: Track, isPlaying: boolean, handlers: {
+  play: () => void;
+  pause: () => void;
+  next: () => void;
+  previous: () => void;
+  seek: (time: number) => void;
+}) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.release.artist.name,
+      album: track.release.title,
+      artwork: track.release.cover_art_url ? [
+        { src: track.release.cover_art_url, sizes: '512x512', type: 'image/jpeg' }
+      ] : []
+    });
+
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    navigator.mediaSession.setActionHandler('play', handlers.play);
+    navigator.mediaSession.setActionHandler('pause', handlers.pause);
+    navigator.mediaSession.setActionHandler('previoustrack', handlers.previous);
+    navigator.mediaSession.setActionHandler('nexttrack', handlers.next);
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined) {
+        handlers.seek(details.seekTime);
+      }
+    });
+  }
+}
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -145,23 +180,38 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isFullListenMode, setIsFullListenModeState] = useState(false);
   const trackCompleteCallbackRef = useRef<((trackId: string) => void) | null>(null);
+
+  // Initialize audio element and Web Audio API for visualizations
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.volume = volume;
+      audioRef.current.crossOrigin = "anonymous";
     }
 
     const audio = audioRef.current;
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      // Update media session position
+      if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration || 0,
+            playbackRate: audio.playbackRate,
+            position: audio.currentTime
+          });
+        } catch (e) {
+          // Ignore errors from position state
+        }
+      }
+    };
     const handleDurationChange = () => setDuration(audio.duration || 0);
     const handleEnded = () => {
-      // Notify that track completed naturally (for full listen mode)
       if (currentTrack && trackCompleteCallbackRef.current) {
         trackCompleteCallbackRef.current(currentTrack.id);
       }
 
-      // Auto-play next track
       const currentIndex = queue.findIndex(t => t.id === currentTrack?.id);
       if (currentIndex < queue.length - 1) {
         play(queue[currentIndex + 1], queue);
@@ -188,27 +238,59 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [currentTrack, queue]);
 
+  // Setup Web Audio API for visualizations
+  const setupAudioContext = useCallback(() => {
+    if (!audioRef.current || audioContextRef.current) return;
+
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+
+      const source = audioContext.createMediaElementSource(audioRef.current);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+    } catch (err) {
+      console.error("Error setting up audio context:", err);
+    }
+  }, []);
+
   const play = useCallback(async (track: Track, newQueue?: Track[]) => {
     if (!audioRef.current) return;
 
     setCurrentTrack(track);
     if (newQueue) setQueue(newQueue);
 
-    // Log play event with location
+    // Log play event
     const { data: { user } } = await supabase.auth.getUser();
     logPlayEvent(track, user?.id || null);
 
-    // For now, use a placeholder - in production this would be a signed URL
-    // We'll create an edge function for this
-    const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/audio/${track.audio_path}`;
+    // Get signed URL for private audio bucket
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from("audio")
+      .createSignedUrl(track.audio_path, 3600); // 1 hour expiry
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      console.error("Error getting signed URL:", signedUrlError);
+      return;
+    }
     
-    audioRef.current.src = audioUrl;
+    audioRef.current.src = signedUrlData.signedUrl;
+    
+    // Setup audio context on first play (needs user interaction)
+    setupAudioContext();
+    
     try {
       await audioRef.current.play();
     } catch (err) {
       console.error("Error playing audio:", err);
     }
-  }, []);
+  }, [setupAudioContext]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -272,6 +354,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const onTrackComplete = useCallback((callback: (trackId: string) => void) => {
     trackCompleteCallbackRef.current = callback;
   }, []);
+
+  // Update media session when track or play state changes
+  useEffect(() => {
+    if (currentTrack) {
+      updateMediaSession(currentTrack, isPlaying, {
+        play: resume,
+        pause,
+        next,
+        previous,
+        seek
+      });
+    }
+  }, [currentTrack, isPlaying, resume, pause, next, previous, seek]);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -284,6 +380,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         isMuted,
         isExpanded,
         isFullListenMode,
+        audioContext: audioContextRef.current,
+        analyser: analyserRef.current,
         play,
         pause,
         resume,
