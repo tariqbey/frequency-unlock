@@ -1,9 +1,18 @@
 import { motion } from "framer-motion";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Download, MessageSquare, Heart } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Play, Pause, Download, MessageSquare, Heart, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Track {
   id: string;
@@ -34,7 +43,7 @@ interface TrackListProps {
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "-:--";
   const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
@@ -47,6 +56,7 @@ export function TrackList({
 }: TrackListProps) {
   const { currentTrack, isPlaying, play, pause, resume } = usePlayer();
   const { isTrackFavorited, toggleTrackFavorite } = useFavorites();
+  const { user } = useAuth();
 
   const handlePlayTrack = (track: Track) => {
     const playerTrack = {
@@ -82,6 +92,55 @@ export function TrackList({
     } else {
       play(playerTrack, queue);
     }
+  };
+
+  const handleShare = async (track: Track, platform: string) => {
+    const shareUrl = `${window.location.origin}/release/${release.id}?track=${track.id}`;
+    const shareText = `Check out "${track.title}" by ${release.artist.name} on 363 Music`;
+
+    // Log share to database
+    try {
+      await supabase.from("shares").insert({
+        track_id: track.id,
+        release_id: release.id,
+        platform,
+        user_id: user?.id || null,
+      });
+    } catch (error) {
+      console.error("Failed to log share:", error);
+    }
+
+    let shareLink = "";
+    switch (platform) {
+      case "twitter":
+        shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+        break;
+      case "facebook":
+        shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+        break;
+      case "whatsapp":
+        shareLink = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+        break;
+      case "copy":
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard!");
+        return;
+      default:
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: track.title,
+              text: shareText,
+              url: shareUrl,
+            });
+          } catch (err) {
+            console.log("Share cancelled");
+          }
+        }
+        return;
+    }
+
+    window.open(shareLink, "_blank", "noopener,noreferrer,width=600,height=400");
   };
 
   return (
@@ -195,6 +254,33 @@ export function TrackList({
                 )}
               />
             </Button>
+
+            {/* Share dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Share2 className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleShare(track, "twitter")}>
+                  Share on X (Twitter)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleShare(track, "facebook")}>
+                  Share on Facebook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleShare(track, "whatsapp")}>
+                  Share on WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleShare(track, "copy")}>
+                  Copy Link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Download button */}
             {hasUnlockedDownloads && (
