@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useFavorites } from "@/hooks/useFavorites";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Download, MessageSquare } from "lucide-react";
+import { Play, Pause, Download, MessageSquare, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Track {
@@ -45,6 +46,7 @@ export function TrackList({
   activeCommentaryTrackId,
 }: TrackListProps) {
   const { currentTrack, isPlaying, play, pause, resume } = usePlayer();
+  const { isTrackFavorited, toggleTrackFavorite } = useFavorites();
 
   const handlePlayTrack = (track: Track) => {
     const playerTrack = {
@@ -172,6 +174,27 @@ export function TrackList({
                 <MessageSquare className="w-4 h-4" />
               </Button>
             )}
+
+            {/* Favorite button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "opacity-0 group-hover:opacity-100 transition-opacity",
+                isTrackFavorited(track.id) && "opacity-100"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTrackFavorite(track.id);
+              }}
+            >
+              <Heart
+                className={cn(
+                  "w-4 h-4",
+                  isTrackFavorited(track.id) && "fill-primary text-primary"
+                )}
+              />
+            </Button>
 
             {/* Download button */}
             {hasUnlockedDownloads && (

@@ -12,6 +12,8 @@ import {
   VolumeX,
   ChevronUp,
   Disc3,
+  Repeat,
+  Repeat1,
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -29,6 +31,7 @@ export function MiniPlayer() {
     duration,
     volume,
     isMuted,
+    repeatMode,
     pause,
     resume,
     next,
@@ -37,6 +40,7 @@ export function MiniPlayer() {
     setVolume,
     toggleMute,
     toggleExpanded,
+    toggleRepeat,
   } = usePlayer();
 
   if (!currentTrack) return null;
@@ -136,6 +140,19 @@ export function MiniPlayer() {
             className="hidden sm:flex"
           >
             <SkipForward className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleRepeat}
+            className={`hidden sm:flex ${repeatMode !== 'off' ? "text-primary" : ""}`}
+          >
+            {repeatMode === 'one' ? (
+              <Repeat1 className="w-4 h-4" />
+            ) : (
+              <Repeat className="w-4 h-4" />
+            )}
           </Button>
         </div>
 

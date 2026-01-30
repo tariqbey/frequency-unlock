@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useFavorites } from "@/hooks/useFavorites";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { AudioVisualizer } from "./AudioVisualizer";
+import { cn } from "@/lib/utils";
 import {
   Play,
   Pause,
@@ -15,6 +17,7 @@ import {
   ListMusic,
   Shuffle,
   Repeat,
+  Repeat1,
   Heart,
 } from "lucide-react";
 
@@ -35,6 +38,7 @@ export function FullPlayer() {
     volume,
     isMuted,
     isExpanded,
+    repeatMode,
     pause,
     resume,
     next,
@@ -43,8 +47,11 @@ export function FullPlayer() {
     setVolume,
     toggleMute,
     toggleExpanded,
+    toggleRepeat,
     play,
   } = usePlayer();
+
+  const { isTrackFavorited, toggleTrackFavorite } = useFavorites();
 
   if (!currentTrack || !isExpanded) return null;
 
@@ -119,8 +126,18 @@ export function FullPlayer() {
               <h2 className="font-display text-xl sm:text-2xl font-bold truncate">
                 {currentTrack.title}
               </h2>
-              <Button variant="ghost" size="icon" className="flex-shrink-0">
-                <Heart className="w-5 h-5" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="flex-shrink-0"
+                onClick={() => toggleTrackFavorite(currentTrack.id)}
+              >
+                <Heart 
+                  className={cn(
+                    "w-5 h-5",
+                    isTrackFavorited(currentTrack.id) && "fill-primary text-primary"
+                  )} 
+                />
               </Button>
             </div>
             <p className="text-muted-foreground mt-1">
@@ -169,8 +186,17 @@ export function FullPlayer() {
               <SkipForward className="w-6 h-6" fill="currentColor" />
             </Button>
             
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <Repeat className="w-5 h-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleRepeat}
+              className={repeatMode !== 'off' ? "text-primary" : "text-muted-foreground hover:text-foreground"}
+            >
+              {repeatMode === 'one' ? (
+                <Repeat1 className="w-5 h-5" />
+              ) : (
+                <Repeat className="w-5 h-5" />
+              )}
             </Button>
           </div>
 
