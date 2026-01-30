@@ -4,7 +4,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// Helper logging function for debugging
+const logStep = (step: string, details?: Record<string, unknown>) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CREATE-DONATION-CHECKOUT] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -13,32 +19,46 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-
   try {
+    logStep("Function started");
+
+    // Verify Stripe secret key is configured
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      throw new Error("STRIPE_SECRET_KEY is not configured");
+    }
+    logStep("Stripe key verified");
+
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       throw new Error("No authorization header provided");
     }
+    logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (userError || !userData.user) {
-      throw new Error("User not authenticated");
+    if (userError) {
+      logStep("Auth error", { error: userError.message });
+      throw new Error(`Authentication error: ${userError.message}`);
     }
-
+    
     const user = userData.user;
-    if (!user.email) {
-      throw new Error("User email not available");
+    if (!user?.email) {
+      throw new Error("User not authenticated or email not available");
     }
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
     // Parse request body
     const { amount_cents, release_id } = await req.json();
+    logStep("Request body parsed", { amount_cents, release_id });
 
     if (!amount_cents || amount_cents < 100) {
       throw new Error("Amount must be at least $1 (100 cents)");
@@ -56,11 +76,13 @@ serve(async (req) => {
       .single();
 
     if (releaseError || !release) {
+      logStep("Release not found", { releaseError });
       throw new Error("Release not found");
     }
+    logStep("Release verified", { releaseId: release.id, title: release.title });
 
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2025-08-27.basil",
     });
 
@@ -70,6 +92,9 @@ serve(async (req) => {
     
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+      logStep("Existing Stripe customer found", { customerId });
+    } else {
+      logStep("No existing Stripe customer, will create on checkout");
     }
 
     // Create donation record in pending state
@@ -86,9 +111,13 @@ serve(async (req) => {
       .single();
 
     if (donationError) {
-      console.error("Error creating donation:", donationError);
+      logStep("Error creating donation record", { error: donationError });
       throw new Error("Failed to create donation record");
     }
+    logStep("Donation record created", { donationId: donation.id });
+
+    // Get origin for redirect URLs
+    const origin = req.headers.get("origin") || "http://localhost:5173";
 
     // Create Stripe checkout session with custom price
     const session = await stripe.checkout.sessions.create({
@@ -108,20 +137,23 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/release/${release_id}?donation=success`,
-      cancel_url: `${req.headers.get("origin")}/release/${release_id}?donation=cancelled`,
+      success_url: `${origin}/release/${release_id}?donation=success`,
+      cancel_url: `${origin}/release/${release_id}?donation=cancelled`,
       metadata: {
         donation_id: donation.id,
         release_id: release_id,
         user_id: user.id,
       },
     });
+    logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
     // Update donation with stripe session ID
     await supabaseClient
       .from("donations")
       .update({ stripe_session_id: session.id })
       .eq("id", donation.id);
+
+    logStep("Donation updated with session ID");
 
     return new Response(
       JSON.stringify({ url: session.url }),
@@ -132,7 +164,7 @@ serve(async (req) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error in create-donation-checkout:", message);
+    logStep("ERROR", { message });
     
     return new Response(
       JSON.stringify({ error: message }),
