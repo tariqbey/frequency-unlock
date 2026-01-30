@@ -8,9 +8,10 @@ import { Logo } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Headphones, Mic2 } from "lucide-react";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -23,6 +24,7 @@ type AuthFormData = z.infer<typeof authSchema>;
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
+  const [accountType, setAccountType] = useState<"listener" | "artist">("listener");
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -49,8 +51,14 @@ export default function Auth() {
         if (error) {
           toast.error(error.message);
         } else {
-          toast.success("Account created! You're now signed in.");
-          navigate("/library");
+          toast.success("Account created! Please check your email to verify.");
+          // If artist, redirect to artist signup after verification
+          if (accountType === "artist") {
+            toast.info("After verifying your email, you can apply to become an artist.");
+            navigate("/artist-signup");
+          } else {
+            navigate("/library");
+          }
         }
       } else {
         const { error } = await signIn(data.email, data.password);
@@ -100,16 +108,63 @@ export default function Auth() {
           <div className="glass-card p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
-                  <Input
-                    id="displayName"
-                    type="text"
-                    placeholder="Your name"
-                    {...register("displayName")}
-                    className="bg-muted/50"
-                  />
-                </div>
+                <>
+                  {/* Account Type Selection */}
+                  <div className="space-y-3">
+                    <Label>I am a...</Label>
+                    <RadioGroup
+                      value={accountType}
+                      onValueChange={(value) => setAccountType(value as "listener" | "artist")}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <div>
+                        <RadioGroupItem
+                          value="listener"
+                          id="listener"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="listener"
+                          className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/50 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                        >
+                          <Headphones className="w-8 h-8 mb-2" />
+                          <span className="font-medium">Listener</span>
+                          <span className="text-xs text-muted-foreground mt-1">
+                            Stream & discover
+                          </span>
+                        </Label>
+                      </div>
+                      <div>
+                        <RadioGroupItem
+                          value="artist"
+                          id="artist"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="artist"
+                          className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-muted/50 hover:border-primary/50 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                        >
+                          <Mic2 className="w-8 h-8 mb-2" />
+                          <span className="font-medium">Artist</span>
+                          <span className="text-xs text-muted-foreground mt-1">
+                            Share your music
+                          </span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input
+                      id="displayName"
+                      type="text"
+                      placeholder="Your name"
+                      {...register("displayName")}
+                      className="bg-muted/50"
+                    />
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">
@@ -150,7 +205,7 @@ export default function Auth() {
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : isSignUp ? (
-                  "Create Account"
+                  accountType === "artist" ? "Create Account & Apply as Artist" : "Create Account"
                 ) : (
                   "Sign In"
                 )}
