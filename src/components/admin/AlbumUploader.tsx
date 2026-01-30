@@ -28,7 +28,6 @@ import {
   Loader2,
   Image as ImageIcon,
   Disc3,
-  Plus,
 } from "lucide-react";
 import { SortableTrackList } from "./SortableTrackList";
 
@@ -55,9 +54,7 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
 
   // Album metadata
   const [title, setTitle] = useState("");
-  const [artistId, setArtistId] = useState("");
-  const [newArtistName, setNewArtistName] = useState("");
-  const [isCreatingNewArtist, setIsCreatingNewArtist] = useState(false);
+  const [artistName, setArtistName] = useState("");
   const [type, setType] = useState<"album" | "single" | "ep">("album");
   const [description, setDescription] = useState("");
   const [suggestedPrice, setSuggestedPrice] = useState(0);
@@ -155,16 +152,15 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
 
   // Upload album
   const uploadAlbum = async () => {
-    const effectiveArtistId = isCreatingNewArtist ? null : artistId;
-    const effectiveArtistName = isCreatingNewArtist ? newArtistName.trim() : null;
+    const effectiveArtistName = artistName.trim();
 
     if (!title) {
       toast.error("Album title is required");
       return;
     }
 
-    if (!effectiveArtistId && !effectiveArtistName) {
-      toast.error("Artist is required - select existing or enter new name");
+    if (!effectiveArtistName) {
+      toast.error("Artist name is required");
       return;
     }
 
@@ -177,10 +173,12 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
     setUploadProgress(0);
 
     try {
-      let finalArtistId = effectiveArtistId;
-
-      // Create new artist if needed
-      if (!finalArtistId && effectiveArtistName) {
+      // Resolve artist by typed name: use existing artist if it matches, otherwise create.
+      const existingArtist = (artists || []).find(
+        (a) => a.name.trim().toLowerCase() === effectiveArtistName.toLowerCase(),
+      );
+      let finalArtistId = existingArtist?.id;
+      if (!finalArtistId) {
         const { data: newArtist, error: artistError } = await supabase
           .from("artists")
           .insert({ name: effectiveArtistName })
@@ -290,9 +288,7 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
   const handleClose = () => {
     if (isUploading) return;
     setTitle("");
-    setArtistId("");
-    setNewArtistName("");
-    setIsCreatingNewArtist(false);
+    setArtistName("");
     setType("album");
     setDescription("");
     setSuggestedPrice(0);
@@ -307,7 +303,7 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
   };
 
   // Check if we can upload
-  const canUpload = title && tracks.length > 0 && (artistId || newArtistName.trim());
+  const canUpload = title && tracks.length > 0 && artistName.trim();
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -341,61 +337,23 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
             <div>
               <Label htmlFor="album-artist">Artist *</Label>
               <div className="space-y-2">
-                {!isCreatingNewArtist ? (
-                  <div className="flex gap-2">
-                    <Select value={artistId} onValueChange={setArtistId} disabled={isUploading}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select artist" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {artists?.map((artist) => (
-                          <SelectItem key={artist.id} value={artist.id}>
-                            {artist.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        setIsCreatingNewArtist(true);
-                        setArtistId("");
-                      }}
-                      disabled={isUploading}
-                      title="Add new artist"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      id="new-artist-name"
-                      value={newArtistName}
-                      onChange={(e) => setNewArtistName(e.target.value)}
-                      placeholder="Type new artist name"
-                      disabled={isUploading}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsCreatingNewArtist(false);
-                        setNewArtistName("");
-                      }}
-                      disabled={isUploading}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-                {!isCreatingNewArtist && artists?.length === 0 && (
+                <Input
+                  id="album-artist"
+                  value={artistName}
+                  onChange={(e) => setArtistName(e.target.value)}
+                  placeholder="Type artist name"
+                  disabled={isUploading}
+                  list="artist-suggestions"
+                  autoComplete="off"
+                />
+                <datalist id="artist-suggestions">
+                  {(artists || []).map((artist) => (
+                    <option key={artist.id} value={artist.name} />
+                  ))}
+                </datalist>
+                {artists?.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No artists yet. Click + to add one.
+                    No artists yet. Just type a name to create one.
                   </p>
                 )}
               </div>
