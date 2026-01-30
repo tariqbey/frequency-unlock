@@ -205,8 +205,20 @@ export function FeaturedArtistCarousel() {
                   </div>
                 )}
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300" />
+                {/* Overlay with album info */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                {/* Album info overlay at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  {artist.latestRelease && (
+                    <h3 className="font-display font-bold text-lg text-white truncate group-hover/card:text-primary transition-colors">
+                      {artist.latestRelease.title}
+                    </h3>
+                  )}
+                  <p className="text-sm text-white/80 truncate">
+                    {artist.name}
+                  </p>
+                </div>
 
                 {/* Play button */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-300">
@@ -214,17 +226,6 @@ export function FeaturedArtistCarousel() {
                     <Play className="w-7 h-7 text-primary-foreground ml-1" fill="currentColor" />
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4">
-                <h3 className="font-semibold text-lg truncate group-hover/card:text-primary transition-colors">
-                  {artist.name}
-                </h3>
-                {artist.latestRelease && (
-                  <p className="text-sm text-muted-foreground truncate">
-                    {artist.latestRelease.title}
-                  </p>
-                )}
               </div>
             </Link>
           </motion.div>
