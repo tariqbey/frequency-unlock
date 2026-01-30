@@ -17,6 +17,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -27,6 +28,7 @@ import {
   Loader2,
   Image as ImageIcon,
   Disc3,
+  Plus,
 } from "lucide-react";
 import { SortableTrackList } from "./SortableTrackList";
 
@@ -54,6 +56,8 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
   // Album metadata
   const [title, setTitle] = useState("");
   const [artistId, setArtistId] = useState("");
+  const [newArtistName, setNewArtistName] = useState("");
+  const [isCreatingNewArtist, setIsCreatingNewArtist] = useState(false);
   const [type, setType] = useState<"album" | "single" | "ep">("album");
   const [description, setDescription] = useState("");
   const [suggestedPrice, setSuggestedPrice] = useState(0);
@@ -151,8 +155,16 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
 
   // Upload album
   const uploadAlbum = async () => {
-    if (!title || !artistId) {
-      toast.error("Title and artist are required");
+    const effectiveArtistId = isCreatingNewArtist ? null : artistId;
+    const effectiveArtistName = isCreatingNewArtist ? newArtistName.trim() : null;
+
+    if (!title) {
+      toast.error("Album title is required");
+      return;
+    }
+
+    if (!effectiveArtistId && !effectiveArtistName) {
+      toast.error("Artist is required - select existing or enter new name");
       return;
     }
 
@@ -165,6 +177,21 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
     setUploadProgress(0);
 
     try {
+      let finalArtistId = effectiveArtistId;
+
+      // Create new artist if needed
+      if (!finalArtistId && effectiveArtistName) {
+        const { data: newArtist, error: artistError } = await supabase
+          .from("artists")
+          .insert({ name: effectiveArtistName })
+          .select()
+          .single();
+
+        if (artistError) throw artistError;
+        finalArtistId = newArtist.id;
+        queryClient.invalidateQueries({ queryKey: ["artists"] });
+      }
+
       let uploadedCoverUrl = coverUrl;
 
       // Upload cover art if provided
@@ -192,7 +219,7 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
         .from("releases")
         .insert({
           title,
-          artist_id: artistId,
+          artist_id: finalArtistId,
           type,
           description: description || null,
           cover_art_url: uploadedCoverUrl,
@@ -264,6 +291,8 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
     if (isUploading) return;
     setTitle("");
     setArtistId("");
+    setNewArtistName("");
+    setIsCreatingNewArtist(false);
     setType("album");
     setDescription("");
     setSuggestedPrice(0);
@@ -277,6 +306,9 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
     onOpenChange(false);
   };
 
+  // Check if we can upload
+  const canUpload = title && tracks.length > 0 && (artistId || newArtistName.trim());
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -285,6 +317,9 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
             <Disc3 className="w-5 h-5" />
             Mass Album Upload
           </DialogTitle>
+          <DialogDescription>
+            Upload an album with cover art and multiple tracks. Select an existing artist or create a new one.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -305,18 +340,65 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
 
             <div>
               <Label htmlFor="album-artist">Artist *</Label>
-              <Select value={artistId} onValueChange={setArtistId} disabled={isUploading}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select artist" />
-                </SelectTrigger>
-                <SelectContent>
-                  {artists?.map((artist) => (
-                    <SelectItem key={artist.id} value={artist.id}>
-                      {artist.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                {!isCreatingNewArtist ? (
+                  <div className="flex gap-2">
+                    <Select value={artistId} onValueChange={setArtistId} disabled={isUploading}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select artist" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {artists?.map((artist) => (
+                          <SelectItem key={artist.id} value={artist.id}>
+                            {artist.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setIsCreatingNewArtist(true);
+                        setArtistId("");
+                      }}
+                      disabled={isUploading}
+                      title="Add new artist"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-artist-name"
+                      value={newArtistName}
+                      onChange={(e) => setNewArtistName(e.target.value)}
+                      placeholder="Type new artist name"
+                      disabled={isUploading}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsCreatingNewArtist(false);
+                        setNewArtistName("");
+                      }}
+                      disabled={isUploading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+                {!isCreatingNewArtist && artists?.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No artists yet. Click + to add one.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div>
@@ -499,7 +581,7 @@ export function AlbumUploader({ open, onOpenChange }: AlbumUploaderProps) {
           </Button>
           <Button
             onClick={uploadAlbum}
-            disabled={isUploading || !title || !artistId || tracks.length === 0}
+            disabled={isUploading || !canUpload}
             className="flex-1"
           >
             {isUploading ? (
