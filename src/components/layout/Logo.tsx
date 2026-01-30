@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import logoImage from "@/assets/363-music-logo.png";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl";
@@ -6,11 +7,12 @@ interface LogoProps {
   animated?: boolean;
 }
 
-const sizeClasses = {
-  sm: "text-xl",
-  md: "text-2xl",
-  lg: "text-4xl",
-  xl: "text-6xl",
+// 2 inches ≈ 192px at 96dpi, sizes relative to that
+const imageSizes = {
+  sm: "h-12 w-12",      // ~48px
+  md: "h-16 w-16",      // ~64px  
+  lg: "h-24 w-24",      // ~96px
+  xl: "h-48 w-48",      // ~192px (2 inches)
 };
 
 const taglineSizes = {
@@ -32,23 +34,11 @@ export function Logo({ size = "md", showTagline = false, animated = true }: Logo
         transition: { duration: 0.5 },
       })}
     >
-      <div className="flex items-center gap-2">
-        {/* 363 Logo Mark */}
-        <div className="relative">
-          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <span className="font-display font-bold text-primary-foreground text-sm">3</span>
-          </div>
-          {animated && (
-            <div className="absolute inset-0 rounded-lg bg-gradient-primary opacity-50 blur-lg animate-pulse-glow" />
-          )}
-        </div>
-        
-        {/* Brand Name */}
-        <h1 className={`font-display font-bold tracking-tight ${sizeClasses[size]}`}>
-          <span className="text-gradient">363</span>
-          <span className="text-foreground ml-2">Music</span>
-        </h1>
-      </div>
+      <img 
+        src={logoImage} 
+        alt="363 Music" 
+        className={`${imageSizes[size]} object-contain`}
+      />
       
       {showTagline && (
         <p className={`text-muted-foreground mt-2 tracking-wide ${taglineSizes[size]}`}>
