@@ -7,29 +7,37 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
+// Helper logging function for debugging
+const logStep = (step: string, details?: Record<string, unknown>) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-  const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-  
-  if (!stripeSecretKey) {
-    console.error("Missing STRIPE_SECRET_KEY");
-    return new Response("Server configuration error", { status: 500 });
-  }
-
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2025-08-27.basil",
-  });
-
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-
   try {
+    logStep("Webhook received");
+
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+    
+    if (!stripeSecretKey) {
+      logStep("ERROR: Missing STRIPE_SECRET_KEY");
+      return new Response("Server configuration error", { status: 500 });
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2025-08-27.basil",
+    });
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
@@ -39,16 +47,19 @@ serve(async (req) => {
     if (stripeWebhookSecret && signature) {
       try {
         event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+        logStep("Webhook signature verified");
       } catch (err) {
-        console.error("Webhook signature verification failed:", err);
+        const message = err instanceof Error ? err.message : "Unknown error";
+        logStep("Webhook signature verification failed", { error: message });
         return new Response("Webhook signature verification failed", { status: 400 });
       }
     } else {
-      // For testing without webhook secret
+      // For testing without webhook secret (not recommended for production)
+      logStep("WARNING: No webhook secret configured, parsing event without verification");
       event = JSON.parse(body);
     }
 
-    console.log("Received Stripe event:", event.type);
+    logStep("Processing event", { type: event.type, id: event.id });
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -57,12 +68,18 @@ serve(async (req) => {
       const releaseId = session.metadata?.release_id;
       const userId = session.metadata?.user_id;
 
+      logStep("Checkout session completed", { 
+        donationId, 
+        releaseId, 
+        userId,
+        amountTotal: session.amount_total,
+        currency: session.currency 
+      });
+
       if (!donationId) {
-        console.error("No donation_id in session metadata");
+        logStep("ERROR: No donation_id in session metadata");
         return new Response("Missing donation_id", { status: 400 });
       }
-
-      console.log(`Processing donation: ${donationId} for release: ${releaseId}`);
 
       // Update donation status to paid
       const { error: updateError } = await supabaseClient
@@ -74,9 +91,10 @@ serve(async (req) => {
         .eq("id", donationId);
 
       if (updateError) {
-        console.error("Error updating donation:", updateError);
+        logStep("Error updating donation", { error: updateError });
         throw updateError;
       }
+      logStep("Donation marked as paid", { donationId });
 
       // Generate download token
       const token = crypto.randomUUID();
@@ -94,9 +112,10 @@ serve(async (req) => {
         });
 
       if (tokenError) {
-        console.error("Error creating download token:", tokenError);
+        logStep("Error creating download token", { error: tokenError });
         throw tokenError;
       }
+      logStep("Download token created", { token, expiresAt: expiresAt.toISOString() });
 
       // Log donation event
       await supabaseClient
@@ -111,8 +130,9 @@ serve(async (req) => {
             donation_id: donationId,
           },
         });
+      logStep("Donation event logged");
 
-      console.log(`Donation ${donationId} marked as paid, download token created`);
+      logStep("Webhook processing complete", { donationId });
     }
 
     return new Response(JSON.stringify({ received: true }), {
@@ -121,7 +141,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Webhook error:", message);
+    logStep("ERROR in webhook", { message });
     
     return new Response(
       JSON.stringify({ error: message }),
