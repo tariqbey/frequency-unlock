@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { AudioVisualizer } from "./AudioVisualizer";
 import {
   Play,
   Pause,
@@ -12,6 +13,9 @@ import {
   ChevronDown,
   Disc3,
   ListMusic,
+  Shuffle,
+  Repeat,
+  Heart,
 } from "lucide-react";
 
 function formatTime(seconds: number): string {
@@ -51,60 +55,87 @@ export function FullPlayer() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl"
+      className="fixed inset-0 z-50 bg-background"
     >
-      {/* Background gradient */}
-      <div className="absolute inset-0 hero-gradient opacity-50" />
+      {/* Dynamic gradient background based on playing state */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/20 via-background to-background" />
+      
+      {/* Animated background visualizer */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0 h-1/2">
+          <AudioVisualizer barCount={60} variant="bars" className="h-full" />
+        </div>
+      </div>
 
       <div className="relative h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between p-4 sm:p-6">
           <Button variant="ghost" size="icon" onClick={toggleExpanded}>
             <ChevronDown className="w-6 h-6" />
           </Button>
-          <p className="text-sm text-muted-foreground">Now Playing</p>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Now Playing</p>
+            <p className="text-sm font-medium mt-1">{currentTrack.release.title}</p>
+          </div>
           <Button variant="ghost" size="icon">
             <ListMusic className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8 gap-8">
-          {/* Album art */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8 gap-6 sm:gap-8">
+          {/* Album art with visualizer overlay */}
           <motion.div
-            className="w-64 h-64 sm:w-80 sm:h-80 rounded-2xl overflow-hidden shadow-2xl shadow-primary/20"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
+            className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
-            {currentTrack.release.cover_art_url ? (
-              <img
-                src={currentTrack.release.cover_art_url}
-                alt={currentTrack.release.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center">
-                <Disc3 className="w-24 h-24 text-muted-foreground" />
+            <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-primary/30">
+              {currentTrack.release.cover_art_url ? (
+                <img
+                  src={currentTrack.release.cover_art_url}
+                  alt={currentTrack.release.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-muted flex items-center justify-center">
+                  <Disc3 className="w-24 h-24 text-muted-foreground animate-spin-slow" />
+                </div>
+              )}
+            </div>
+            
+            {/* Visualizer bar at bottom of album art */}
+            {isPlaying && (
+              <div className="absolute -bottom-4 left-4 right-4 h-8">
+                <AudioVisualizer barCount={32} variant="bars" className="h-full" />
               </div>
             )}
           </motion.div>
 
           {/* Track info */}
-          <div className="text-center max-w-md">
-            <h2 className="font-display text-2xl font-bold">{currentTrack.title}</h2>
+          <div className="text-center max-w-md mt-4">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="font-display text-xl sm:text-2xl font-bold truncate">
+                {currentTrack.title}
+              </h2>
+              <Button variant="ghost" size="icon" className="flex-shrink-0">
+                <Heart className="w-5 h-5" />
+              </Button>
+            </div>
             <p className="text-muted-foreground mt-1">
-              {currentTrack.release.artist.name} • {currentTrack.release.title}
+              {currentTrack.release.artist.name}
             </p>
           </div>
 
-          {/* Progress bar */}
+          {/* Progress bar - Spotify style */}
           <div className="w-full max-w-md space-y-2">
             <Slider
               value={[progress]}
               max={100}
               step={0.1}
               onValueChange={([val]) => seek((val / 100) * duration)}
+              className="cursor-pointer"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{formatTime(currentTime)}</span>
@@ -112,27 +143,34 @@ export function FullPlayer() {
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-6">
-            <Button variant="ghost" size="icon" onClick={previous}>
-              <SkipBack className="w-6 h-6" />
+          {/* Controls - Spotify style layout */}
+          <div className="flex items-center gap-6 sm:gap-8">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <Shuffle className="w-5 h-5" />
+            </Button>
+            
+            <Button variant="ghost" size="icon" onClick={previous} className="w-12 h-12">
+              <SkipBack className="w-6 h-6" fill="currentColor" />
             </Button>
 
             <Button
               variant="hero"
-              size="xl"
               onClick={isPlaying ? pause : resume}
               className="w-16 h-16 rounded-full"
             >
               {isPlaying ? (
-                <Pause className="w-7 h-7" />
+                <Pause className="w-8 h-8" fill="currentColor" />
               ) : (
-                <Play className="w-7 h-7 ml-1" />
+                <Play className="w-8 h-8 ml-1" fill="currentColor" />
               )}
             </Button>
 
-            <Button variant="ghost" size="icon" onClick={next}>
-              <SkipForward className="w-6 h-6" />
+            <Button variant="ghost" size="icon" onClick={next} className="w-12 h-12">
+              <SkipForward className="w-6 h-6" fill="currentColor" />
+            </Button>
+            
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <Repeat className="w-5 h-5" />
             </Button>
           </div>
 
@@ -157,9 +195,9 @@ export function FullPlayer() {
 
         {/* Queue preview */}
         {queue.length > 1 && (
-          <div className="p-4 border-t border-border/50">
-            <p className="text-xs text-muted-foreground mb-2">Up Next</p>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="p-4 sm:p-6 border-t border-border/50 bg-background/80 backdrop-blur-sm">
+            <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider">Up Next</p>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {queue
                 .filter((t) => t.id !== currentTrack.id)
                 .slice(0, 5)
@@ -167,9 +205,27 @@ export function FullPlayer() {
                   <button
                     key={track.id}
                     onClick={() => play(track, queue)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors flex-shrink-0"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors flex-shrink-0 group"
                   >
-                    <span className="text-sm truncate max-w-32">{track.title}</span>
+                    {track.release.cover_art_url ? (
+                      <img 
+                        src={track.release.cover_art_url} 
+                        alt={track.title}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-muted-foreground/20 flex items-center justify-center">
+                        <Disc3 className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="text-left">
+                      <span className="text-sm font-medium truncate max-w-32 block group-hover:text-primary transition-colors">
+                        {track.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {track.release.artist.name}
+                      </span>
+                    </div>
                   </button>
                 ))}
             </div>
