@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Music, Disc3, Loader2 } from "lucide-react";
-
+import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
 interface Release {
   id: string;
   title: string;
@@ -81,11 +81,24 @@ export default function Library() {
 
       <main className="pt-24 pb-32 px-4">
         <div className="container max-w-7xl">
+          {/* Featured Artists Carousel */}
+          <motion.div
+            className="mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h2 className="font-display text-2xl md:text-3xl font-bold mb-6">
+              Featured <span className="text-gradient">Artists</span>
+            </h2>
+            <FeaturedArtistCarousel />
+          </motion.div>
+
           {/* Header */}
           <motion.div
             className="mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
             <h1 className="font-display text-3xl md:text-4xl font-bold">
               Music <span className="text-gradient">Library</span>
