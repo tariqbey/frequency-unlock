@@ -17,6 +17,8 @@ interface Track {
   };
 }
 
+type RepeatMode = 'off' | 'all' | 'one';
+
 interface PlayerContextType {
   currentTrack: Track | null;
   queue: Track[];
@@ -27,6 +29,7 @@ interface PlayerContextType {
   isMuted: boolean;
   isExpanded: boolean;
   isFullListenMode: boolean;
+  repeatMode: RepeatMode;
   audioContext: AudioContext | null;
   analyser: AnalyserNode | null;
   play: (track: Track, queue?: Track[]) => void;
@@ -40,6 +43,8 @@ interface PlayerContextType {
   toggleExpanded: () => void;
   addToQueue: (track: Track) => void;
   setFullListenMode: (enabled: boolean) => void;
+  setRepeatMode: (mode: RepeatMode) => void;
+  toggleRepeat: () => void;
   onTrackComplete: (callback: (trackId: string) => void) => void;
 }
 
@@ -179,6 +184,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isMuted, setIsMuted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isFullListenMode, setIsFullListenModeState] = useState(false);
+  const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
   const trackCompleteCallbackRef = useRef<((trackId: string) => void) | null>(null);
 
   // Initialize audio element and Web Audio API for visualizations
@@ -212,9 +218,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         trackCompleteCallbackRef.current(currentTrack.id);
       }
 
+      // Handle repeat modes
+      if (repeatMode === 'one') {
+        // Repeat the same track
+        audio.currentTime = 0;
+        audio.play();
+        return;
+      }
+
       const currentIndex = queue.findIndex(t => t.id === currentTrack?.id);
       if (currentIndex < queue.length - 1) {
         play(queue[currentIndex + 1], queue);
+      } else if (repeatMode === 'all' && queue.length > 0) {
+        // Loop back to the first track
+        play(queue[0], queue);
       } else {
         setIsPlaying(false);
         setIsFullListenModeState(false);
@@ -351,6 +368,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsFullListenModeState(enabled);
   }, []);
 
+  const setRepeatMode = useCallback((mode: RepeatMode) => {
+    setRepeatModeState(mode);
+  }, []);
+
+  const toggleRepeat = useCallback(() => {
+    setRepeatModeState(prev => {
+      if (prev === 'off') return 'all';
+      if (prev === 'all') return 'one';
+      return 'off';
+    });
+  }, []);
+
   const onTrackComplete = useCallback((callback: (trackId: string) => void) => {
     trackCompleteCallbackRef.current = callback;
   }, []);
@@ -380,6 +409,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         isMuted,
         isExpanded,
         isFullListenMode,
+        repeatMode,
         audioContext: audioContextRef.current,
         analyser: analyserRef.current,
         play,
@@ -393,6 +423,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         toggleExpanded,
         addToQueue,
         setFullListenMode,
+        setRepeatMode,
+        toggleRepeat,
         onTrackComplete,
       }}
     >

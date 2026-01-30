@@ -61,7 +61,7 @@ export default function Release() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { play } = usePlayer();
-  const { activeSession, hasCompletedListen, startFullListenSession } = useFullAlbumListen();
+  const { activeSession, hasCompletedListen, startFullListenSession, cancelSession } = useFullAlbumListen();
   const [activeCommentaryTrackId, setActiveCommentaryTrackId] = useState<string | null>(null);
   // Fetch release data
   const { data: release, isLoading } = useQuery({
@@ -295,7 +295,17 @@ export default function Release() {
                   <Play className="w-4 h-4" />
                   Play All
                 </Button>
-                {!hasCompletedListen(release.id) && !activeSession && (
+                {activeSession?.releaseId === release.id ? (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="gap-2 border-primary text-primary"
+                    onClick={cancelSession}
+                  >
+                    <Headphones className="w-4 h-4" />
+                    Full Album Mode Active ({activeSession.completedTracks.size}/{activeSession.totalTracks})
+                  </Button>
+                ) : !hasCompletedListen(release.id) ? (
                   <Button
                     variant="glass"
                     size="lg"
@@ -307,6 +317,16 @@ export default function Release() {
                   >
                     <Headphones className="w-4 h-4" />
                     Full Album Mode
+                  </Button>
+                ) : (
+                  <Button
+                    variant="glass"
+                    size="lg"
+                    className="gap-2 text-green-500 border-green-500"
+                    disabled
+                  >
+                    <Headphones className="w-4 h-4" />
+                    Album Completed ✓
                   </Button>
                 )}
                 <Button variant="glass" size="lg" className="gap-2">
