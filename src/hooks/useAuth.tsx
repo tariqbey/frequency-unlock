@@ -10,6 +10,8 @@ interface Profile {
   artist_id: string | null;
   status: "active" | "suspended";
   created_at: string;
+  avatar_url?: string | null;
+  cover_url?: string | null;
 }
 
 interface UserRole {
@@ -25,6 +27,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isAdmin: boolean;
   isArtist: boolean;
   isModerator: boolean;
@@ -122,6 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchUserData(user.id);
+    }
+  };
+
   const hasRole = (role: string) => roles.some((r) => r.role === role);
 
   return (
@@ -135,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        refreshProfile,
         isAdmin: hasRole("admin"),
         isArtist: hasRole("artist"),
         isModerator: hasRole("moderator"),

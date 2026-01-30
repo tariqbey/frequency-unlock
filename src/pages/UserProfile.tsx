@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ProfileImageUpload } from "@/components/profile/ProfileImageUpload";
 import { User, Music, Download, DollarSign, Calendar, Disc, ArrowLeft, Heart, MessageSquare } from "lucide-react";
 
 interface DonationWithRelease {
@@ -46,8 +48,11 @@ interface DonationWithRelease {
 
 export default function UserProfile() {
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const { favoriteTrackIds, favoriteReleaseIds } = useFavorites();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url || null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(profile?.cover_url || null);
 
   const { data: donations, isLoading: donationsLoading } = useQuery({
     queryKey: ["user-donations", user?.id],
@@ -197,16 +202,42 @@ export default function UserProfile() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-8"
         >
-          {/* Header */}
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Your Profile</h1>
-              <p className="text-muted-foreground">
-                Manage your account and view your activity
-              </p>
+          {/* Back Button */}
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="absolute top-24 left-4 z-10">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+
+          {/* Cover Photo */}
+          {user && (
+            <ProfileImageUpload
+              userId={user.id}
+              currentUrl={coverUrl || profile?.cover_url}
+              type="cover"
+              onUploadComplete={(url) => {
+                setCoverUrl(url);
+                refreshProfile();
+              }}
+            />
+          )}
+
+          {/* Profile Header with Avatar */}
+          <div className="relative -mt-16 px-4 md:px-8">
+            <div className="flex flex-col md:flex-row md:items-end gap-4">
+              {user && (
+                <ProfileImageUpload
+                  userId={user.id}
+                  currentUrl={avatarUrl || profile?.avatar_url}
+                  type="avatar"
+                  onUploadComplete={(url) => {
+                    setAvatarUrl(url);
+                    refreshProfile();
+                  }}
+                />
+              )}
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold">{profile?.display_name || "Your Profile"}</h1>
+                <p className="text-muted-foreground">{user?.email}</p>
+              </div>
             </div>
           </div>
 
