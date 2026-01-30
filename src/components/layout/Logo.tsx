@@ -7,11 +7,11 @@ interface LogoProps {
   animated?: boolean;
 }
 
-// 2 inches ≈ 192px at 96dpi, sizes relative to that
+// Logo sizes - sm increased to ~1 inch (96px) for navbar
 const imageSizes = {
-  sm: "h-12 w-12",      // ~48px
-  md: "h-16 w-16",      // ~64px  
-  lg: "h-24 w-24",      // ~96px
+  sm: "h-16 w-16",      // ~64px - slightly larger for nav
+  md: "h-20 w-20",      // ~80px  
+  lg: "h-24 w-24",      // ~96px (~1 inch)
   xl: "h-48 w-48",      // ~192px (2 inches)
 };
 

@@ -6,11 +6,12 @@ import { StatsCard } from "@/components/admin/StatsCard";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { GeoDistributionMap } from "@/components/admin/GeoDistributionMap";
 import { UserEngagementMetrics } from "@/components/admin/UserEngagementMetrics";
+import { TrackAnalytics } from "@/components/admin/TrackAnalytics";
 import { AlbumUploader } from "@/components/admin/AlbumUploader";
 import { Button } from "@/components/ui/button";
 import { 
   Disc3, Music, DollarSign, Users, Radio, Mic2, 
-  PlayCircle, Download, Star, TrendingUp, Trophy, Crown, Upload
+  PlayCircle, Download, Star, TrendingUp, Trophy, Crown, Upload, BarChart3
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
@@ -487,6 +488,15 @@ export default function AdminDashboard() {
 
         {/* User Engagement Metrics */}
         <UserEngagementMetrics />
+
+        {/* Track Analytics Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-6 h-6 text-primary" />
+            <h2 className="font-display text-xl font-bold">Track Analytics</h2>
+          </div>
+          <TrackAnalytics />
+        </div>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
