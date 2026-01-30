@@ -234,13 +234,13 @@ export default function AdminReleases() {
                   Add Release
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
+            <DialogContent className="max-w-md w-[95vw] max-h-[90vh] flex flex-col">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>
                   {editingId ? "Edit Release" : "Add Release"}
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-2">
                 <div>
                   <Label htmlFor="title">Title</Label>
                   <Input
@@ -251,42 +251,44 @@ export default function AdminReleases() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="artist">Artist</Label>
-                  <Select
-                    value={form.artist_id}
-                    onValueChange={(value) => setForm({ ...form, artist_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select artist" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {artists?.map((artist) => (
-                        <SelectItem key={artist.id} value={artist.id}>
-                          {artist.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="artist">Artist</Label>
+                    <Select
+                      value={form.artist_id}
+                      onValueChange={(value) => setForm({ ...form, artist_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select artist" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {artists?.map((artist) => (
+                          <SelectItem key={artist.id} value={artist.id}>
+                            {artist.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label htmlFor="type">Type</Label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(value: "album" | "single" | "ep") =>
-                      setForm({ ...form, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="album">Album</SelectItem>
-                      <SelectItem value="single">Single</SelectItem>
-                      <SelectItem value="ep">EP</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Label htmlFor="type">Type</Label>
+                    <Select
+                      value={form.type}
+                      onValueChange={(value: "album" | "single" | "ep") =>
+                        setForm({ ...form, type: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="album">Album</SelectItem>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="ep">EP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div>
@@ -296,7 +298,7 @@ export default function AdminReleases() {
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="Release description"
-                    rows={3}
+                    rows={2}
                   />
                 </div>
 
@@ -352,7 +354,7 @@ export default function AdminReleases() {
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-4 sticky bottom-0 bg-background pb-2">
                   <Button
                     type="button"
                     variant="outline"
