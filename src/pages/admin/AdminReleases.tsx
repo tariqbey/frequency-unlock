@@ -33,7 +33,7 @@ import { FileUpload } from "@/components/admin/FileUpload";
 import { AlbumUploader } from "@/components/admin/AlbumUploader";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload, Star } from "lucide-react";
 
 interface Release {
   id: string;
@@ -42,6 +42,7 @@ interface Release {
   description: string | null;
   cover_art_url: string | null;
   is_published: boolean;
+  is_featured: boolean;
   suggested_price_cents: number | null;
   streaming_requires_donation: boolean;
   created_at: string;
@@ -55,6 +56,7 @@ interface ReleaseForm {
   cover_art_url: string;
   artist_id: string;
   is_published: boolean;
+  is_featured: boolean;
   suggested_price_cents: number;
   streaming_requires_donation: boolean;
 }
@@ -66,6 +68,7 @@ const initialForm: ReleaseForm = {
   cover_art_url: "",
   artist_id: "",
   is_published: false,
+  is_featured: false,
   suggested_price_cents: 0,
   streaming_requires_donation: false,
 };
@@ -90,6 +93,7 @@ export default function AdminReleases() {
           description,
           cover_art_url,
           is_published,
+          is_featured,
           suggested_price_cents,
           streaming_requires_donation,
           created_at,
@@ -129,6 +133,7 @@ export default function AdminReleases() {
             cover_art_url: data.cover_art_url || null,
             artist_id: data.artist_id,
             is_published: data.is_published,
+            is_featured: data.is_featured,
             suggested_price_cents: data.suggested_price_cents || null,
             streaming_requires_donation: data.streaming_requires_donation,
             published_at: data.is_published ? new Date().toISOString() : null,
@@ -143,6 +148,7 @@ export default function AdminReleases() {
           cover_art_url: data.cover_art_url || null,
           artist_id: data.artist_id,
           is_published: data.is_published,
+          is_featured: data.is_featured,
           suggested_price_cents: data.suggested_price_cents || null,
           streaming_requires_donation: data.streaming_requires_donation,
           published_at: data.is_published ? new Date().toISOString() : null,
@@ -184,6 +190,7 @@ export default function AdminReleases() {
       cover_art_url: release.cover_art_url || "",
       artist_id: release.artist?.id || "",
       is_published: release.is_published,
+      is_featured: release.is_featured,
       suggested_price_cents: release.suggested_price_cents || 0,
       streaming_requires_donation: release.streaming_requires_donation,
     });
@@ -342,6 +349,20 @@ export default function AdminReleases() {
                 </div>
 
                 <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="is_featured">Featured on Homepage</Label>
+                    <p className="text-xs text-muted-foreground">Show in homepage carousel</p>
+                  </div>
+                  <Switch
+                    id="is_featured"
+                    checked={form.is_featured}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, is_featured: checked })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
                   <Label htmlFor="streaming_requires_donation">
                     Streaming requires donation
                   </Label>
@@ -424,18 +445,30 @@ export default function AdminReleases() {
                   <TableRow key={release.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {release.cover_art_url ? (
-                          <img
-                            src={release.cover_art_url}
-                            alt={release.title}
-                            className="w-10 h-10 rounded object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                            <Disc3 className="w-5 h-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <span className="font-medium">{release.title}</span>
+                        <div className="relative">
+                          {release.cover_art_url ? (
+                            <img
+                              src={release.cover_art_url}
+                              alt={release.title}
+                              className="w-10 h-10 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                              <Disc3 className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          {release.is_featured && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                              <Star className="w-2.5 h-2.5 text-primary-foreground" fill="currentColor" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-medium">{release.title}</span>
+                          {release.is_featured && (
+                            <span className="ml-2 text-xs text-primary font-medium">Featured</span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{release.artist?.name || "—"}</TableCell>
