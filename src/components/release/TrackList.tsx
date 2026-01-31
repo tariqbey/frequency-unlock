@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -10,9 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Pause, Download, MessageSquare, Heart, Share2 } from "lucide-react";
+import { Play, Pause, Download, MessageSquare, Heart, Share2, ListPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { AddToPlaylistDialog } from "@/components/playlist/AddToPlaylistDialog";
 
 interface Track {
   id: string;
@@ -57,6 +59,13 @@ export function TrackList({
   const { currentTrack, isPlaying, play, pause, resume } = usePlayer();
   const { isTrackFavorited, toggleTrackFavorite } = useFavorites();
   const { user } = useAuth();
+  const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+
+  const openPlaylistDialog = (track: Track) => {
+    setSelectedTrack(track);
+    setPlaylistDialogOpen(true);
+  };
 
   const handlePlayTrack = (track: Track) => {
     const playerTrack = {
@@ -282,6 +291,19 @@ export function TrackList({
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Add to Playlist button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                openPlaylistDialog(track);
+              }}
+            >
+              <ListPlus className="w-4 h-4" />
+            </Button>
+
             {/* Download button */}
             {hasUnlockedDownloads && (
               <Button
@@ -300,6 +322,14 @@ export function TrackList({
           </motion.div>
         );
       })}
+
+      {/* Add to Playlist Dialog */}
+      <AddToPlaylistDialog
+        open={playlistDialogOpen}
+        onOpenChange={setPlaylistDialogOpen}
+        trackId={selectedTrack?.id || ""}
+        trackTitle={selectedTrack?.title || ""}
+      />
     </div>
   );
 }

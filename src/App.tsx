@@ -32,6 +32,8 @@ import ArtistTracks from "./pages/artist/ArtistTracks";
 import ArtistSignup from "./pages/ArtistSignup";
 import Settings from "./pages/Settings";
 import Radio from "./pages/Radio";
+import Playlists from "./pages/Playlists";
+import PlaylistDetail from "./pages/PlaylistDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -80,6 +82,8 @@ const App = () => (
                 <Route path="/downloads" element={<Downloads />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/radio" element={<Radio />} />
+                <Route path="/playlists" element={<Playlists />} />
+                <Route path="/playlist/:id" element={<PlaylistDetail />} />
                 <Route path="/forum" element={<ForumPage />} />
                 <Route path="/forum/new" element={<ForumNewThread />} />
                 <Route path="/forum/thread/:id" element={<ForumThread />} />
