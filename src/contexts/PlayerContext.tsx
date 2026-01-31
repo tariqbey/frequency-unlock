@@ -212,7 +212,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-    const handleDurationChange = () => setDuration(audio.duration || 0);
+    const handleDurationChange = async () => {
+      const audioDuration = audio.duration || 0;
+      setDuration(audioDuration);
+      
+      // Save duration to database if track doesn't have it and duration is valid
+      if (currentTrack && !currentTrack.duration_seconds && audioDuration > 0) {
+        const durationSeconds = Math.round(audioDuration);
+        try {
+          await supabase
+            .from("tracks")
+            .update({ duration_seconds: durationSeconds })
+            .eq("id", currentTrack.id);
+          console.log(`Saved duration ${durationSeconds}s for track ${currentTrack.id}`);
+        } catch (err) {
+          console.error("Error saving track duration:", err);
+        }
+      }
+    };
     const handleEnded = () => {
       if (currentTrack && trackCompleteCallbackRef.current) {
         trackCompleteCallbackRef.current(currentTrack.id);
