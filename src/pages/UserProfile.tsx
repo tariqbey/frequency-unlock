@@ -49,10 +49,23 @@ interface DonationWithRelease {
 export default function UserProfile() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { user, profile, roles, loading: authLoading, refreshProfile, isAdmin, isArtist, isModerator } = useAuth();
   const { favoriteTrackIds, favoriteReleaseIds } = useFavorites();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url || null);
   const [coverUrl, setCoverUrl] = useState<string | null>(profile?.cover_url || null);
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return { label: "Admin", className: "bg-destructive/10 text-destructive border-destructive/20" };
+      case "artist":
+        return { label: "Artist", className: "bg-primary/10 text-primary border-primary/20" };
+      case "moderator":
+        return { label: "Moderator", className: "bg-blue-500/10 text-blue-500 border-blue-500/20" };
+      default:
+        return { label: "Listener", className: "bg-muted text-muted-foreground border-border" };
+    }
+  };
 
   const { data: donations, isLoading: donationsLoading } = useQuery({
     queryKey: ["user-donations", user?.id],
@@ -235,7 +248,23 @@ export default function UserProfile() {
                 />
               )}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold">{profile?.display_name || "Your Profile"}</h1>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-3xl font-bold">{profile?.display_name || "Your Profile"}</h1>
+                  {roles.length > 0 ? (
+                    roles.map((r) => {
+                      const badge = getRoleBadge(r.role);
+                      return (
+                        <Badge key={r.role} variant="outline" className={badge.className}>
+                          {badge.label}
+                        </Badge>
+                      );
+                    })
+                  ) : (
+                    <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
+                      Listener
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-muted-foreground">{user?.email}</p>
               </div>
             </div>

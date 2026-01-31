@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +49,7 @@ import {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, profile, isAdmin, isArtist, loading, signOut } = useAuth();
+  const { user, profile, roles, isAdmin, isArtist, isModerator, loading, signOut } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -76,6 +77,19 @@ export default function Settings() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [newReleaseAlerts, setNewReleaseAlerts] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return { label: "Admin", className: "bg-destructive/10 text-destructive border-destructive/20" };
+      case "artist":
+        return { label: "Artist", className: "bg-primary/10 text-primary border-primary/20" };
+      case "moderator":
+        return { label: "Moderator", className: "bg-blue-500/10 text-blue-500 border-blue-500/20" };
+      default:
+        return { label: "Listener", className: "bg-muted text-muted-foreground border-border" };
+    }
+  };
 
   if (loading) {
     return (
@@ -263,7 +277,23 @@ export default function Settings() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="font-display text-3xl font-bold mb-2">Settings</h1>
+          <div className="flex items-center gap-3 flex-wrap mb-2">
+            <h1 className="font-display text-3xl font-bold">Settings</h1>
+            {roles.length > 0 ? (
+              roles.map((r) => {
+                const badge = getRoleBadge(r.role);
+                return (
+                  <Badge key={r.role} variant="outline" className={badge.className}>
+                    {badge.label}
+                  </Badge>
+                );
+              })
+            ) : (
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
+                Listener
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground mb-8">
             Manage your account settings and preferences
           </p>
