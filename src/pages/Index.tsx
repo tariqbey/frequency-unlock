@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
 import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
-import { Radio, Headphones, Download, Music2 } from "lucide-react";
+import { Radio, Headphones, Download, Music2, Pause, Play } from "lucide-react";
+import { useState, useRef } from "react";
 
 const features = [
   {
@@ -24,91 +25,158 @@ const features = [
 ];
 
 export default function Index() {
+  const [isPlaying, setIsPlaying] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const toggleVideo = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   return (
-    <div className="min-h-screen hero-gradient">
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+    <div className="min-h-screen bg-background">
+      {/* Video Hero Section */}
+      <section className="relative h-screen w-full overflow-hidden">
+        {/* Background Video */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/videos/hero-background.mp4" type="video/mp4" />
+        </video>
+
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-background/60" />
+
+        {/* Navigation */}
+        <nav className="absolute top-0 left-0 right-0 z-20 px-6 py-4 md:px-12">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <Logo size="md" />
+            <div className="hidden md:flex items-center gap-8">
+              <Link to="/library" className="text-foreground/80 hover:text-foreground transition-colors font-medium">
+                Library
+              </Link>
+              <Link to="/radio" className="text-foreground/80 hover:text-foreground transition-colors font-medium">
+                Radio
+              </Link>
+              <Link to="/forum" className="text-foreground/80 hover:text-foreground transition-colors font-medium">
+                Community
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link to="/auth" className="hidden sm:block text-foreground/80 hover:text-foreground transition-colors font-medium">
+                Log in
+              </Link>
+              <Button variant="hero" size="lg" asChild>
+                <Link to="/auth?mode=signup">Get Started</Link>
+              </Button>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero Content */}
+        <div className="relative z-10 h-full flex items-center">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 w-full">
+            <motion.div
+              className="max-w-3xl"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-foreground leading-[0.95] tracking-tight">
+                The ultimate
+                <br />
+                home for
+                <br />
+                <span className="text-gradient italic">artists</span>
+              </h1>
+
+              <motion.div
+                className="mt-10"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+              >
+                <Button variant="hero" size="xl" asChild>
+                  <Link to="/library" className="flex items-center gap-3">
+                    <Radio className="w-5 h-5" />
+                    Enter the Frequency
+                  </Link>
+                </Button>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Free to stream. <Link to="/auth" className="underline hover:text-foreground">Terms apply.</Link>
+                </p>
+              </motion.div>
+            </motion.div>
+          </div>
         </div>
 
-        {/* Frequency visualization */}
-        <motion.div
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px frequency-wave opacity-30"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.3 }}
-          transition={{ delay: 0.5, duration: 1 }}
-        />
+        {/* Video progress bar */}
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 w-20 h-1 bg-foreground/30 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-foreground/60"
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
 
-        {/* Main content */}
+        {/* Play/Pause button */}
+        <button
+          onClick={toggleVideo}
+          className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-foreground/20 backdrop-blur-sm flex items-center justify-center hover:bg-foreground/30 transition-colors z-20"
+          aria-label={isPlaying ? "Pause video" : "Play video"}
+        >
+          {isPlaying ? (
+            <Pause className="w-5 h-5 text-foreground" />
+          ) : (
+            <Play className="w-5 h-5 text-foreground ml-0.5" />
+          )}
+        </button>
+      </section>
+
+      {/* Mission Statement Section */}
+      <section className="py-32 px-6 md:px-12 bg-background">
         <motion.div
-          className="relative z-10 text-center max-w-4xl mx-auto"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <Logo size="xl" showTagline animated />
-
-          <motion.p
-            className="mt-8 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            A direct-to-fan music platform where artists share their story 
-            and fans unlock exclusive downloads by donating what they feel.
-          </motion.p>
-
-          <motion.div
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-          >
-            <Button variant="hero" size="xl" asChild>
-              <Link to="/library" className="flex items-center gap-3">
-                <Radio className="w-5 h-5" />
-                Enter the Frequency
-              </Link>
-            </Button>
-            <Button variant="glass" size="lg" asChild>
-              <Link to="/auth">Join the Community</Link>
-            </Button>
-          </motion.div>
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, y: [0, 8, 0] }}
-          transition={{ 
-            opacity: { delay: 1, duration: 0.5 },
-            y: { delay: 1.5, duration: 1.5, repeat: Infinity }
-          }}
-        >
-          <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-1">
-            <div className="w-1 h-2 rounded-full bg-muted-foreground/50" />
-          </div>
+          <h2 className="font-display text-3xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight italic">
+            As the home for independent music, 363 Music is where fans and artists come together.
+          </h2>
+          <p className="mt-8 text-lg md:text-xl text-muted-foreground max-w-2xl">
+            It's the place to discover the perfect song for the moment. The place that brings music to your whole life.
+          </p>
         </motion.div>
       </section>
 
       {/* Featured Artists Section */}
-      <section className="py-24 px-4">
-        <div className="container max-w-6xl">
+      <section className="py-24 px-6 md:px-12 bg-primary">
+        <div className="max-w-7xl mx-auto">
           <motion.div
             className="mb-12"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="font-display text-3xl md:text-4xl font-bold">
-              Featured <span className="text-gradient">Artists</span>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-primary-foreground">
+              Take us with you anywhere
             </h2>
-            <p className="mt-4 text-muted-foreground max-w-xl">
-              Discover new music from independent artists
+            <p className="mt-4 text-primary-foreground/80 max-w-xl text-lg">
+              One of the world's most authentic music platforms, connecting artists directly with fans.
             </p>
           </motion.div>
 
@@ -117,18 +185,18 @@ export default function Index() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 px-4 bg-muted/30">
-        <div className="container max-w-6xl">
+      <section className="py-24 px-6 md:px-12 bg-background">
+        <div className="max-w-7xl mx-auto">
           <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="font-display text-3xl md:text-4xl font-bold">
+            <h2 className="font-display text-3xl md:text-5xl font-bold">
               How It <span className="text-gradient">Works</span>
             </h2>
-            <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+            <p className="mt-4 text-muted-foreground max-w-xl mx-auto text-lg">
               Connect directly with artists and support their work on your terms
             </p>
           </motion.div>
@@ -162,18 +230,17 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
+      <section className="py-24 px-6 md:px-12 relative bg-muted/30">
         <motion.div
-          className="container max-w-2xl text-center relative z-10"
+          className="max-w-2xl mx-auto text-center relative z-10"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">
+          <h2 className="font-display text-3xl md:text-5xl font-bold mb-6">
             Ready to <span className="text-gradient">Download the Frequency</span>?
           </h2>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground mb-8 text-lg">
             Join our community of music lovers and independent artists today.
           </p>
           <Button variant="hero" size="xl" asChild>
@@ -183,8 +250,8 @@ export default function Index() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8 px-4">
-        <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-border/50 py-8 px-6 md:px-12">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
           <p className="text-sm text-muted-foreground">
             © 2024 363 Music. Download the Frequency.
