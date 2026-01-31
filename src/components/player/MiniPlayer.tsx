@@ -54,9 +54,18 @@ export function MiniPlayer() {
       exit={{ y: 100 }}
       className="player-bar"
     >
+      {/* Background visualizer when playing */}
+      {isPlaying && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute bottom-0 left-0 right-0 h-full opacity-15">
+            <AudioVisualizer barCount={100} variant="bars" className="h-full" />
+          </div>
+        </div>
+      )}
+
       {/* Progress bar at top - clickable for seeking */}
       <div 
-        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group"
+        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group z-10"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const percent = (e.clientX - rect.left) / rect.width;
@@ -71,7 +80,7 @@ export function MiniPlayer() {
         <div className="absolute top-0 h-1 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
-      <div className="container flex items-center h-20 gap-4">
+      <div className="container flex items-center h-20 gap-4 relative z-10">
         {/* Track info with album art */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
