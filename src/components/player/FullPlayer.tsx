@@ -65,12 +65,12 @@ export function FullPlayer() {
       className="fixed inset-0 z-50 bg-background"
     >
       {/* Dynamic gradient background based on playing state */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/20 via-background to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-background/95 to-background" />
       
-      {/* Animated background visualizer */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0 h-1/2">
-          <AudioVisualizer barCount={60} variant="bars" className="h-full" />
+      {/* Animated background visualizer - more prominent */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0 h-2/3 opacity-30">
+          <AudioVisualizer barCount={80} variant="bars" className="h-full" />
         </div>
       </div>
 
@@ -112,12 +112,10 @@ export function FullPlayer() {
               )}
             </div>
             
-            {/* Visualizer bar at bottom of album art */}
-            {isPlaying && (
-              <div className="absolute -bottom-4 left-4 right-4 h-8">
-                <AudioVisualizer barCount={32} variant="bars" className="h-full" />
-              </div>
-            )}
+            {/* Prominent visualizer bar below album art */}
+            <div className="absolute -bottom-6 left-0 right-0 h-12 px-4">
+              <AudioVisualizer barCount={48} variant="wave" className="h-full" />
+            </div>
           </motion.div>
 
           {/* Track info */}
