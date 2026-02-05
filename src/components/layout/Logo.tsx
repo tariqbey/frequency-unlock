@@ -2,17 +2,18 @@ import { motion } from "framer-motion";
 import logoImage from "@/assets/363-music-logo.png";
 
 interface LogoProps {
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "xxl";
   showTagline?: boolean;
   animated?: boolean;
 }
 
-// Logo sizes - sm increased to ~1 inch (96px) for navbar
+// Logo sizes - 2.5 inches = ~240px at 96 DPI
 const imageSizes = {
-  sm: "h-16 w-16",      // ~64px - slightly larger for nav
+  sm: "h-16 w-16",      // ~64px
   md: "h-20 w-20",      // ~80px  
   lg: "h-24 w-24",      // ~96px (~1 inch)
   xl: "h-48 w-48",      // ~192px (2 inches)
+  xxl: "h-60 w-60",     // ~240px (2.5 inches)
 };
 
 const taglineSizes = {
@@ -20,6 +21,7 @@ const taglineSizes = {
   md: "text-sm",
   lg: "text-base",
   xl: "text-xl",
+  xxl: "text-2xl",
 };
 
 export function Logo({ size = "md", showTagline = false, animated = true }: LogoProps) {
