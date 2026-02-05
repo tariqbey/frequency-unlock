@@ -210,114 +210,148 @@
    return { encrypted, salt, serverPublicKey };
  }
  
- Deno.serve(async (req) => {
-   if (req.method === 'OPTIONS') {
-     return new Response(null, { headers: corsHeaders });
-   }
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify the caller is authenticated and is an admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user is admin
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (!roleData) {
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { user_id, payload } = await req.json();
+
+    if (!user_id || !payload) {
+      return new Response(
+        JSON.stringify({ error: 'user_id and payload are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[Push] Admin ${user.id} sending notification to user: ${user_id}`);
  
-   try {
-     const { user_id, payload } = await req.json();
- 
-     if (!user_id || !payload) {
-       return new Response(
-         JSON.stringify({ error: 'user_id and payload are required' }),
-         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       );
-     }
- 
-     console.log(`[Push] Sending notification to user: ${user_id}`);
- 
-     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-     const supabase = createClient(supabaseUrl, supabaseServiceKey);
- 
-     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
- 
-     if (!vapidPublicKey || !vapidPrivateKey) {
-       return new Response(
-         JSON.stringify({ error: 'VAPID keys not configured' }),
-         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       );
-     }
- 
-     const { data: subscriptions, error: subError } = await supabase
-       .from('push_subscriptions')
-       .select('*')
-       .eq('user_id', user_id);
- 
-     if (subError || !subscriptions || subscriptions.length === 0) {
-       return new Response(
-         JSON.stringify({ message: 'No subscriptions found', sent: 0 }),
-         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-       );
-     }
- 
-     const notificationPayload = JSON.stringify({
-       title: payload.title || 'Notification',
-       body: payload.body || 'You have a new notification',
-       icon: payload.icon || '/icon-192.png',
-       badge: '/icon-192.png',
-       url: payload.url || '/'
-     });
- 
-     let successCount = 0;
- 
-     for (const subscription of subscriptions) {
-       try {
-         const subscriberPublicKey = base64UrlToUint8Array(subscription.p256dh);
-         const subscriberAuth = base64UrlToUint8Array(subscription.auth);
- 
-         const { encrypted } = await encryptPayload(
-           notificationPayload,
-           subscriberPublicKey,
-           subscriberAuth
-         );
- 
-         const jwt = await generateVapidJWT(subscription.endpoint, vapidPrivateKey, vapidPublicKey);
- 
-         // CRITICAL: Convert Uint8Array to ArrayBuffer properly
-         const body = encrypted.buffer.slice(
-           encrypted.byteOffset,
-           encrypted.byteOffset + encrypted.byteLength
-         ) as ArrayBuffer;
- 
-         const response = await fetch(subscription.endpoint, {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/octet-stream',
-             'Content-Encoding': 'aes128gcm',
-             'Content-Length': encrypted.length.toString(),
-             'TTL': '86400',
-             'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
-           },
-           body,
-         });
- 
-         if (response.ok || response.status === 201) {
-           successCount++;
-         } else if (response.status === 410 || response.status === 404) {
-           // Subscription expired, remove it
-           await supabase
-             .from('push_subscriptions')
-             .delete()
-             .eq('id', subscription.id);
-         }
-       } catch (error) {
-         console.error(`[Push] Error sending:`, error);
-       }
-     }
- 
-     return new Response(
-       JSON.stringify({ success: true, sent: successCount, total: subscriptions.length }),
-       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-     );
- 
-   } catch (error: unknown) {
-     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-     return new Response(
-       JSON.stringify({ error: errorMessage }),
-       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-     );
-   }
- });
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      return new Response(
+        JSON.stringify({ error: 'VAPID keys not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: subscriptions, error: subError } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('user_id', user_id);
+
+    if (subError || !subscriptions || subscriptions.length === 0) {
+      return new Response(
+        JSON.stringify({ message: 'No subscriptions found', sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const notificationPayload = JSON.stringify({
+      title: payload.title || 'Notification',
+      body: payload.body || 'You have a new notification',
+      icon: payload.icon || '/icon-192.png',
+      badge: '/icon-192.png',
+      url: payload.url || '/'
+    });
+
+    let successCount = 0;
+
+    for (const subscription of subscriptions) {
+      try {
+        const subscriberPublicKey = base64UrlToUint8Array(subscription.p256dh);
+        const subscriberAuth = base64UrlToUint8Array(subscription.auth);
+
+        const { encrypted } = await encryptPayload(
+          notificationPayload,
+          subscriberPublicKey,
+          subscriberAuth
+        );
+
+        const jwt = await generateVapidJWT(subscription.endpoint, vapidPrivateKey, vapidPublicKey);
+
+        // CRITICAL: Convert Uint8Array to ArrayBuffer properly
+        const body = encrypted.buffer.slice(
+          encrypted.byteOffset,
+          encrypted.byteOffset + encrypted.byteLength
+        ) as ArrayBuffer;
+
+        const response = await fetch(subscription.endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'Content-Encoding': 'aes128gcm',
+            'Content-Length': encrypted.length.toString(),
+            'TTL': '86400',
+            'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
+          },
+          body,
+        });
+
+        if (response.ok || response.status === 201) {
+          successCount++;
+        } else if (response.status === 410 || response.status === 404) {
+          // Subscription expired, remove it
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('id', subscription.id);
+        }
+      } catch (error) {
+        console.error(`[Push] Error sending:`, error);
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, sent: successCount, total: subscriptions.length }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
