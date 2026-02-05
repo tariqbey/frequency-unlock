@@ -46,6 +46,7 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
+ import { PushNotificationSettings } from "@/components/settings/PushNotificationSettings";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -560,6 +561,11 @@ export default function Settings() {
             </h2>
 
             <div className="space-y-4">
+               {/* Push Notifications */}
+               <PushNotificationSettings />
+ 
+               <Separator />
+ 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="emailNotifications">Email Notifications</Label>

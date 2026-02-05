@@ -1,1 +1,4 @@
-project_id = "viiumpipzxrwdkvkslmt"
+ project_id = "viiumpipzxrwdkvkslmt"
+ 
+ [functions.send-push-notification]
+ verify_jwt = false
