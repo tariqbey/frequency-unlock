@@ -140,12 +140,12 @@ export function ReleaseComments({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center gap-2">
-        <MessageSquare className="w-5 h-5" />
-        <h2 className="font-display text-xl font-semibold">Album Comments</h2>
+        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+        <h2 className="font-display text-lg sm:text-xl font-semibold">Album Comments</h2>
         {comments && comments.length > 0 && (
-          <span className="text-sm text-muted-foreground">
+          <span className="text-xs sm:text-sm text-muted-foreground">
             ({comments.length})
           </span>
         )}
@@ -205,38 +205,38 @@ export function ReleaseComments({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ delay: index * 0.05 }}
-                className="glass-card p-4"
+                className="glass-card p-3 sm:p-4"
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-muted-foreground" />
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sm">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-medium text-xs sm:text-sm">
                         {comment.profile?.display_name || "Anonymous"}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="text-[10px] sm:text-xs text-muted-foreground">
                           {format(new Date(comment.created_at), "MMM d, yyyy")}
                         </span>
                         {user?.id === comment.user_id && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-5 w-5 sm:h-6 sm:w-6"
                             onClick={() => {
                               if (confirm("Delete this comment?")) {
                                 deleteCommentMutation.mutate(comment.id);
                               }
                             }}
                           >
-                            <Trash2 className="w-3 h-3 text-muted-foreground" />
+                            <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-muted-foreground" />
                           </Button>
                         )}
                       </div>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                    <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
                       {comment.body}
                     </p>
                   </div>
@@ -245,10 +245,10 @@ export function ReleaseComments({
             ))}
           </AnimatePresence>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No comments yet</p>
-            <p className="text-xs mt-1">
+          <div className="text-center py-6 sm:py-8 text-muted-foreground">
+            <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-xs sm:text-sm">No comments yet</p>
+            <p className="text-[10px] sm:text-xs mt-1">
               Be the first to share your thoughts on this album
             </p>
           </div>
