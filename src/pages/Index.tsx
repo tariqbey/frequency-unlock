@@ -123,16 +123,6 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Video progress bar */}
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 w-20 h-1 bg-foreground/30 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-foreground/60"
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-
         {/* Play/Pause button */}
         <button
           onClick={toggleVideo}
