@@ -32,8 +32,13 @@ export default function Index() {
         muted
         loop
         playsInline
-        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none"
+        controls={false}
+        disablePictureInPicture
+        disableRemotePlayback
+        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none"
         style={{ zIndex: 0 }}
+        // suppress native loading indicator
+        onLoadStart={(e) => { e.currentTarget.setAttribute('preload', 'auto'); }}
       >
         <source src="/videos/hero-background.mp4" type="video/mp4" />
       </video>

@@ -41,9 +41,11 @@ function isMobileDevice(): boolean {
 
 function isStandalone(): boolean {
   // Check if already running as installed PWA
+  if (typeof window === 'undefined') return false;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
+    (window.navigator as any).standalone === true ||
+    document.referrer.includes('android-app://')
   );
 }
 
@@ -52,35 +54,55 @@ export function MobileInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
-    // Don't show if not mobile, already standalone, or user dismissed
-    if (!isMobileDevice() || isStandalone()) {
+    // Don't show if not mobile or already standalone
+    if (!isMobileDevice()) {
+      console.log('[PWA] Not a mobile device, skipping install prompt');
+      return;
+    }
+    
+    if (isStandalone()) {
+      console.log('[PWA] Already running as standalone, skipping install prompt');
       return;
     }
 
     const state = getPromptState();
     if (state.dismissedForever) {
+      console.log('[PWA] User dismissed forever, skipping install prompt');
       return;
     }
     if (state.dismissedUntil && Date.now() < state.dismissedUntil) {
+      console.log('[PWA] User dismissed temporarily, skipping install prompt');
       return;
     }
 
     // Show prompt after a short delay for better UX
     const timer = setTimeout(() => {
+      console.log('[PWA] Showing install prompt');
       setIsVisible(true);
-    }, 2000);
+    }, 1500);
 
     // Listen for beforeinstallprompt (Android Chrome)
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
+      console.log('[PWA] beforeinstallprompt event captured');
       setDeferredPrompt(e);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    
+    // Also listen for app installed event
+    const handleAppInstalled = () => {
+      console.log('[PWA] App was installed');
+      setIsVisible(false);
+      setPromptState({ dismissedForever: true, dismissedUntil: null });
+    };
+    
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 

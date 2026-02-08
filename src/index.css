@@ -336,8 +336,40 @@
    padding-right: env(safe-area-inset-right, 0px);
  }
  
- /* Prevent horizontal scroll on mobile */
- html, body {
-   overflow-x: hidden;
-   max-width: 100vw;
- }
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Hide native video controls and loading indicators */
+video::-webkit-media-controls,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-fullscreen-button,
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+video::-moz-media-controls {
+  display: none !important;
+}
+
+/* Ensure video never shows buffering UI */
+video {
+  background: transparent;
+}
+
+video::backdrop {
+  background: transparent;
+}

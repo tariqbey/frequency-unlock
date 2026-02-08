@@ -13,34 +13,48 @@
    plugins: [
      react(),
      mode === "development" && componentTagger(),
-     VitePWA({
-       registerType: 'autoUpdate',
-       includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
-       manifest: {
-         name: '363 Music',
-         short_name: '363 Music',
-         description: 'Download the Frequency - Premium music streaming and downloads',
-         theme_color: '#0a0a0b',
-         background_color: '#0a0a0b',
-         display: 'standalone',
-         orientation: 'portrait',
-         start_url: '/',
-         scope: '/',
+    VitePWA({
+      registerType: 'prompt',
+      includeAssets: ['favicon.ico', 'favicon.png', 'icon-192.png', 'icon-512.png', 'app-icon-192.png', 'app-icon-512.png'],
+      manifest: {
+        name: '363 Music',
+        short_name: '363 Music',
+        description: 'Download the Frequency - Premium music streaming and downloads',
+        theme_color: '#0a0a0b',
+        background_color: '#0a0a0b',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        id: '/',
+        categories: ['music', 'entertainment'],
         icons: [
-            {
-              src: '/app-icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any maskable'
-            },
-            {
-              src: '/app-icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
-       },
+          {
+            src: '/app-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/app-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/app-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/app-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ]
+      },
        workbox: {
          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
