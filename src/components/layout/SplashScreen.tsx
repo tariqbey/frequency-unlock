@@ -38,10 +38,10 @@ export function SplashScreen({ isVisible, onAnimationComplete }: SplashScreenPro
             <motion.img
               src={logoImage}
               alt="363 Music"
-              className="h-60 w-60 object-contain relative z-10"
+              className="h-40 w-40 sm:h-52 sm:w-52 md:h-60 md:w-60 object-contain relative z-10"
               initial={{ opacity: 0, y: 20 }}
-              animate={{ 
-                opacity: 1, 
+              animate={{
+                opacity: 1,
                 y: 0,
               }}
               transition={{
