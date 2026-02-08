@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import logoImage from "@/assets/363-music-logo.png";
+import logoImage from "@/assets/363-music-logo-transparent.png";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "xxl";

@@ -42,7 +42,7 @@ export function Navbar() {
           <MobileMenu />
           
           <Link to="/" className="flex items-center">
-            <Logo size="xxl" />
+            <Logo size="md" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
