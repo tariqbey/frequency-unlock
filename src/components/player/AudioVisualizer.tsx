@@ -1,11 +1,12 @@
 import { useRef, useEffect, useState } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface AudioVisualizerProps {
   barCount?: number;
   className?: string;
-  variant?: "bars" | "wave" | "dots";
+  variant?: "bars" | "wave" | "dots" | "circular" | "pulse";
 }
 
 export function AudioVisualizer({ 
@@ -15,6 +16,7 @@ export function AudioVisualizer({
 }: AudioVisualizerProps) {
   const { analyser, isPlaying } = usePlayer();
   const [bars, setBars] = useState<number[]>(new Array(barCount).fill(0));
+  const [avgLevel, setAvgLevel] = useState(0);
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -22,11 +24,14 @@ export function AudioVisualizer({
       // If no analyser, show animated placeholder bars when playing
       if (isPlaying) {
         const interval = setInterval(() => {
-          setBars(prev => prev.map(() => Math.random() * 100));
+          const randomBars = Array.from({ length: barCount }, () => Math.random() * 100);
+          setBars(randomBars);
+          setAvgLevel(randomBars.reduce((a, b) => a + b, 0) / barCount);
         }, 100);
         return () => clearInterval(interval);
       } else {
         setBars(new Array(barCount).fill(10));
+        setAvgLevel(10);
       }
       return;
     }
@@ -42,15 +47,19 @@ export function AudioVisualizer({
       // Sample bars evenly across frequency spectrum
       const newBars: number[] = [];
       const step = Math.floor(bufferLength / barCount);
+      let totalLevel = 0;
       
       for (let i = 0; i < barCount; i++) {
         const index = i * step;
         const value = dataArray[index] || 0;
         // Normalize to 0-100
-        newBars.push((value / 255) * 100);
+        const normalized = (value / 255) * 100;
+        newBars.push(normalized);
+        totalLevel += normalized;
       }
 
       setBars(newBars);
+      setAvgLevel(totalLevel / barCount);
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -58,6 +67,7 @@ export function AudioVisualizer({
       animate();
     } else {
       setBars(new Array(barCount).fill(10));
+      setAvgLevel(10);
     }
 
     return () => {
@@ -67,9 +77,54 @@ export function AudioVisualizer({
     };
   }, [analyser, isPlaying, barCount]);
 
+  // Circular pulsing visualizer
+  if (variant === "circular") {
+    return (
+      <div className={cn("relative flex items-center justify-center", className)}>
+        {/* Outer pulse rings */}
+        {[0, 1, 2].map((ring) => (
+          <motion.div
+            key={ring}
+            className="absolute rounded-full border-2 border-primary/30"
+            animate={{
+              width: isPlaying ? `${100 + avgLevel * 0.8 + ring * 30}%` : "100%",
+              height: isPlaying ? `${100 + avgLevel * 0.8 + ring * 30}%` : "100%",
+              opacity: isPlaying ? 0.4 - ring * 0.1 : 0.1,
+            }}
+            transition={{ duration: 0.1 }}
+          />
+        ))}
+        {/* Center glow */}
+        <motion.div
+          className="absolute rounded-full bg-primary/20 blur-xl"
+          animate={{
+            width: isPlaying ? `${80 + avgLevel * 0.5}%` : "60%",
+            height: isPlaying ? `${80 + avgLevel * 0.5}%` : "60%",
+            opacity: isPlaying ? 0.5 + avgLevel / 200 : 0.2,
+          }}
+          transition={{ duration: 0.1 }}
+        />
+      </div>
+    );
+  }
+
+  // Pulsing background effect
+  if (variant === "pulse") {
+    return (
+      <motion.div
+        className={cn("absolute inset-0 bg-primary/10 rounded-full blur-3xl", className)}
+        animate={{
+          scale: isPlaying ? 1 + avgLevel / 150 : 1,
+          opacity: isPlaying ? 0.2 + avgLevel / 300 : 0.1,
+        }}
+        transition={{ duration: 0.1 }}
+      />
+    );
+  }
+
   if (variant === "dots") {
     return (
-      <div className={`flex items-center justify-center gap-1 ${className}`}>
+      <div className={cn("flex items-center justify-center gap-1", className)}>
         {bars.slice(0, 5).map((height, index) => (
           <motion.div
             key={index}
@@ -87,7 +142,7 @@ export function AudioVisualizer({
 
   if (variant === "wave") {
     return (
-      <div className={`flex items-end justify-center gap-0.5 h-full ${className}`}>
+      <div className={cn("flex items-end justify-center gap-0.5 h-full", className)}>
         {bars.map((height, index) => (
           <motion.div
             key={index}
@@ -108,7 +163,7 @@ export function AudioVisualizer({
 
   // Default: bars
   return (
-    <div className={`flex items-end justify-center gap-1 h-full ${className}`}>
+    <div className={cn("flex items-end justify-center gap-1 h-full", className)}>
       {bars.map((height, index) => (
         <motion.div
           key={index}

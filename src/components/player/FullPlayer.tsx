@@ -62,15 +62,20 @@ export function FullPlayer() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background"
+      className="fixed inset-0 z-50 bg-background overflow-hidden"
     >
       {/* Dynamic gradient background based on playing state */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-background/95 to-background" />
       
+      {/* Circular pulse effect behind album art */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <AudioVisualizer variant="pulse" className="w-[600px] h-[600px]" />
+      </div>
+      
       {/* Animated background visualizer - more prominent */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0 h-2/3 opacity-30">
-          <AudioVisualizer barCount={80} variant="bars" className="h-full" />
+        <div className="absolute bottom-0 left-0 right-0 h-2/3 opacity-25">
+          <AudioVisualizer barCount={100} variant="bars" className="h-full" />
         </div>
       </div>
 
@@ -98,7 +103,12 @@ export function FullPlayer() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-primary/30">
+            {/* Circular visualizer ring around album art */}
+            <div className="absolute -inset-6 sm:-inset-8">
+              <AudioVisualizer variant="circular" className="w-full h-full" />
+            </div>
+            
+            <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-primary/30">
               {currentTrack.release.cover_art_url ? (
                 <img
                   src={currentTrack.release.cover_art_url}
@@ -113,7 +123,7 @@ export function FullPlayer() {
             </div>
             
             {/* Prominent visualizer bar below album art */}
-            <div className="absolute -bottom-6 left-0 right-0 h-12 px-4">
+            <div className="absolute -bottom-8 left-0 right-0 h-14 px-4">
               <AudioVisualizer barCount={48} variant="wave" className="h-full" />
             </div>
           </motion.div>

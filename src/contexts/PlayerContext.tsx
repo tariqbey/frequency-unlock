@@ -273,11 +273,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [currentTrack, queue]);
 
   // Setup Web Audio API for visualizations
-  const setupAudioContext = useCallback(() => {
+  const setupAudioContext = useCallback(async () => {
     if (!audioRef.current || audioContextRef.current) return;
 
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Resume audio context if suspended (required for iOS)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.8;
@@ -317,7 +323,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     audioRef.current.src = signedUrlData.signedUrl;
     
     // Setup audio context on first play (needs user interaction)
-    setupAudioContext();
+    await setupAudioContext();
+    
+    // Resume audio context if suspended (iOS fix)
+    if (audioContextRef.current?.state === 'suspended') {
+      await audioContextRef.current.resume();
+    }
     
     try {
       await audioRef.current.play();
