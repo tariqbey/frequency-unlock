@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
 import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
-import { Radio, Headphones, Download, Music2, Pause, Play } from "lucide-react";
-import { useState, useRef } from "react";
+import { Radio, Headphones, Download, Music2 } from "lucide-react";
 
 const features = [
   {
@@ -25,30 +24,15 @@ const features = [
 ];
 
 export default function Index() {
-  const [isPlaying, setIsPlaying] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const toggleVideo = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
   return (
     <div className="min-h-screen relative">
-      {/* Fixed Background Video - visible through hero section */}
+      {/* Fixed Background Video - no controls, auto-loops silently */}
       <video
-        ref={videoRef}
         autoPlay
         muted
         loop
         playsInline
-        className="fixed top-0 left-0 w-full h-screen object-cover"
+        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none"
         style={{ zIndex: 0 }}
       >
         <source src="/videos/hero-background.mp4" type="video/mp4" />
@@ -123,18 +107,6 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Play/Pause button */}
-        <button
-          onClick={toggleVideo}
-          className="absolute bottom-6 right-6 w-12 h-12 rounded-full bg-foreground/20 backdrop-blur-sm flex items-center justify-center hover:bg-foreground/30 transition-colors z-20"
-          aria-label={isPlaying ? "Pause video" : "Play video"}
-        >
-          {isPlaying ? (
-            <Pause className="w-5 h-5 text-foreground" />
-          ) : (
-            <Play className="w-5 h-5 text-foreground ml-0.5" />
-          )}
-        </button>
       </section>
 
       {/* Mission Statement Section */}
