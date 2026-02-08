@@ -34,11 +34,11 @@ export function SplashScreen({ isVisible, onAnimationComplete }: SplashScreenPro
               transition={{ duration: 1.2, delay: 0.2 }}
             />
             
-            {/* Logo with pulse animation */}
+            {/* Logo - constrained size */}
             <motion.img
               src={logoImage}
               alt="363 Music"
-              className="h-40 w-40 sm:h-52 sm:w-52 md:h-60 md:w-60 object-contain relative z-10"
+              className="h-24 w-24 sm:h-32 sm:w-32 max-w-[30vw] max-h-[30vw] object-contain relative z-10"
               initial={{ opacity: 0, y: 20 }}
               animate={{
                 opacity: 1,
