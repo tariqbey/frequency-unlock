@@ -67,23 +67,32 @@ function ArtistRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [splashComplete, setSplashComplete] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Hide splash after animation
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2500);
-    return () => clearTimeout(timer);
+    // Only show splash on mobile devices
+    const checkMobile = window.innerWidth < 768;
+    setIsMobile(checkMobile);
+    
+    if (checkMobile) {
+      setShowSplash(true);
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   return (
     <>
-      <SplashScreen 
-        isVisible={showSplash} 
-        onAnimationComplete={() => setSplashComplete(true)} 
-      />
+      {isMobile && (
+        <SplashScreen 
+          isVisible={showSplash} 
+          onAnimationComplete={() => setSplashComplete(true)} 
+        />
+      )}
       <Toaster />
       <Sonner />
       <BrowserRouter>
