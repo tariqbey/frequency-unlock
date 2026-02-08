@@ -10,6 +10,7 @@ import { FullAlbumListenProvider } from "@/hooks/useFullAlbumListen";
 import { MiniPlayer } from "@/components/player/MiniPlayer";
 import { FullPlayer } from "@/components/player/FullPlayer";
 import { SplashScreen } from "@/components/layout/SplashScreen";
+import { MobileInstallPrompt } from "@/components/pwa/MobileInstallPrompt";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Library from "./pages/Library";
@@ -118,6 +119,7 @@ function AppContent() {
       </BrowserRouter>
       <MiniPlayer />
       <FullPlayer />
+      <MobileInstallPrompt />
     </>
   );
 }
