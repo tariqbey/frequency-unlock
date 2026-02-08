@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +6,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { TrackList } from "@/components/release/TrackList";
 import { DonationBox } from "@/components/release/DonationBox";
-import { CommentarySection } from "@/components/release/CommentarySection";
 import { ReleaseComments } from "@/components/release/ReleaseComments";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -62,7 +60,6 @@ export default function Release() {
   const { user } = useAuth();
   const { play } = usePlayer();
   const { activeSession, hasCompletedListen, startFullListenSession, cancelSession } = useFullAlbumListen();
-  const [activeCommentaryTrackId, setActiveCommentaryTrackId] = useState<string | null>(null);
   // Fetch release data
   const { data: release, isLoading } = useQuery({
     queryKey: ["release", id],
@@ -129,15 +126,6 @@ export default function Release() {
     },
     enabled: !!id && !!user,
   });
-
-  const handleShowCommentary = (trackId: string) => {
-    setActiveCommentaryTrackId(
-      activeCommentaryTrackId === trackId ? null : trackId
-    );
-  };
-
-  const activeTrack = release?.tracks.find((t) => t.id === activeCommentaryTrackId);
-  const activeCommentary = activeTrack?.track_commentary?.[0] || null;
 
   const typeLabels = {
     album: "Album",
@@ -361,12 +349,9 @@ export default function Release() {
                     artist: { name: release.artist.name },
                   }}
                   hasUnlockedDownloads={hasUnlockedDownloads || false}
-                  onShowCommentary={handleShowCommentary}
-                  activeCommentaryTrackId={activeCommentaryTrackId}
                 />
               </div>
 
-              {/* Commentary section */}
               {/* Album Comments Section */}
               <div className="mt-8">
                 <ReleaseComments
@@ -376,16 +361,6 @@ export default function Release() {
                   onStartFullListen={handleStartFullListen}
                 />
               </div>
-              {activeCommentaryTrackId && activeCommentary && (
-                <div className="mt-6">
-                  <CommentarySection
-                    trackTitle={activeTrack?.title || ""}
-                    artistName={release.artist.name}
-                    commentary={activeCommentary}
-                    onClose={() => setActiveCommentaryTrackId(null)}
-                  />
-                </div>
-              )}
             </motion.div>
 
             {/* Sidebar with donation box */}
