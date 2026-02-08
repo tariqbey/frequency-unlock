@@ -2,26 +2,36 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MessageSquare,
   Clock,
   Pin,
-  User,
   Plus,
   Search,
   Flame,
   Loader2,
+  Heart,
+  Share2,
+  MoreHorizontal,
+  Music,
+  Disc3,
 } from "lucide-react";
 import { VoteButtons } from "@/components/forum/VoteButtons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Thread {
   id: string;
@@ -33,6 +43,7 @@ interface Thread {
   forum_id: string;
   profiles: {
     display_name: string | null;
+    avatar_url: string | null;
   } | null;
   forums: {
     title: string;
@@ -82,28 +93,24 @@ export default function ForumPage() {
       if (sortBy === "new") {
         query = query.order("created_at", { ascending: false });
       } else {
-        // "Hot" - pinned first, then by recency
         query = query.order("pinned", { ascending: false }).order("created_at", { ascending: false });
       }
 
       const { data, error } = await query.limit(50);
       if (error) throw error;
 
-      // Get user IDs to fetch profiles
       const userIds = [...new Set(data?.map((t) => t.user_id) || [])];
       
-      // Fetch profiles separately
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name")
+        .select("user_id, display_name, avatar_url")
         .in("user_id", userIds);
 
       const profileMap = (profiles || []).reduce((acc, p) => {
         acc[p.user_id] = p;
         return acc;
-      }, {} as Record<string, { display_name: string | null }>);
+      }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
 
-      // Get comment counts for each thread
       const threadIds = data?.map((t) => t.id) || [];
       const { data: commentCounts } = await supabase
         .from("comments")
@@ -136,193 +143,218 @@ export default function ForumPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container max-w-4xl pt-24 pb-32">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Community Forum</h1>
-              <p className="text-muted-foreground">
-                Discuss music, share discoveries, connect with artists
-              </p>
-            </div>
+      <main className="container max-w-2xl pt-20 pb-32 px-0 sm:px-4">
+        {/* Stories-style header - scrollable categories */}
+        <div className="sticky top-16 z-10 bg-background/95 backdrop-blur-sm border-b border-border/50 pb-3 pt-4 px-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold">Feed</h1>
             {user && (
-              <Button onClick={() => navigate("/forum/new")} className="gap-2">
+              <Button onClick={() => navigate("/forum/new")} size="sm" className="gap-1.5">
                 <Plus className="w-4 h-4" />
-                New Post
+                <span className="hidden sm:inline">New Post</span>
               </Button>
             )}
           </div>
 
-          {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search posts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-muted/50 border-0 h-9"
+            />
+          </div>
+
+          {/* Sort Tabs + Categories in horizontal scroll */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
             <Tabs value={sortBy} onValueChange={(v) => setSortBy(v as "hot" | "new")}>
-              <TabsList>
-                <TabsTrigger value="hot" className="gap-2">
-                  <Flame className="w-4 h-4" />
+              <TabsList className="h-8">
+                <TabsTrigger value="hot" className="gap-1.5 text-xs h-7 px-3">
+                  <Flame className="w-3.5 h-3.5" />
                   Hot
                 </TabsTrigger>
-                <TabsTrigger value="new" className="gap-2">
-                  <Clock className="w-4 h-4" />
+                <TabsTrigger value="new" className="gap-1.5 text-xs h-7 px-3">
+                  <Clock className="w-3.5 h-3.5" />
                   New
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
 
-          {/* Forum Categories */}
-          {forums && forums.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="h-6 w-px bg-border shrink-0" />
+
+            {/* Category Pills */}
+            <div className="flex gap-2">
               <Badge
                 variant={selectedForum === null ? "default" : "outline"}
-                className="cursor-pointer hover:bg-primary/90 transition-colors"
+                className="cursor-pointer shrink-0 text-xs"
                 onClick={() => setSelectedForum(null)}
               >
                 All
               </Badge>
-              {forums.map((forum) => (
+              {forums?.map((forum) => (
                 <Badge
                   key={forum.id}
                   variant={selectedForum === forum.id ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/90 transition-colors"
+                  className="cursor-pointer shrink-0 text-xs whitespace-nowrap"
                   onClick={() => setSelectedForum(forum.id)}
                 >
                   {forum.title}
                 </Badge>
               ))}
             </div>
-          )}
+          </div>
+        </div>
 
-          {/* Feed */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        {/* Social Feed */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : filteredThreads && filteredThreads.length > 0 ? (
+          <div className="divide-y divide-border/50">
+            {pinnedThreads.map((thread, index) => (
+              <FeedPost key={thread.id} thread={thread} index={index} isPinned />
+            ))}
+            {regularThreads.map((thread, index) => (
+              <FeedPost key={thread.id} thread={thread} index={index + pinnedThreads.length} />
+            ))}
+          </div>
+        ) : (
+          <div className="py-16 text-center px-4">
+            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+              <MessageSquare className="w-8 h-8 text-muted-foreground/50" />
             </div>
-          ) : filteredThreads && filteredThreads.length > 0 ? (
-            <div className="space-y-3">
-              {/* Pinned Posts */}
-              {pinnedThreads.length > 0 && (
-                <div className="space-y-3">
-                  {pinnedThreads.map((thread, index) => (
-                    <ThreadCard key={thread.id} thread={thread} index={index} />
-                  ))}
-                </div>
-              )}
-
-              {/* Regular Posts */}
-              {regularThreads.map((thread, index) => (
-                <ThreadCard key={thread.id} thread={thread} index={index + pinnedThreads.length} />
-              ))}
-            </div>
-          ) : (
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="py-16 text-center">
-                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  {user
-                    ? "Be the first to start a discussion!"
-                    : "Sign in to start a discussion"}
-                </p>
-                {user ? (
-                  <Button onClick={() => navigate("/forum/new")}>Create Post</Button>
-                ) : (
-                  <Button onClick={() => navigate("/auth")}>Sign In</Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
+            <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
+            <p className="text-muted-foreground text-sm mb-6">
+              {user ? "Be the first to start a discussion!" : "Sign in to start a discussion"}
+            </p>
+            {user ? (
+              <Button onClick={() => navigate("/forum/new")}>Create Post</Button>
+            ) : (
+              <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
 }
 
-interface ThreadCardProps {
+interface FeedPostProps {
   thread: Thread;
   index: number;
+  isPinned?: boolean;
 }
 
-function ThreadCard({ thread, index }: ThreadCardProps) {
+function FeedPost({ thread, index, isPinned }: FeedPostProps) {
   const timeAgo = formatDistanceToNow(new Date(thread.created_at), { addSuffix: true });
+  const displayName = thread.profiles?.display_name || "Anonymous";
+  const avatarUrl = thread.profiles?.avatar_url;
+  const initials = displayName.charAt(0).toUpperCase();
+
+  // Determine if this is a music-related post based on forum category
+  const isMusicPost = thread.forums?.title?.toLowerCase().includes("music") || 
+                      thread.forums?.title?.toLowerCase().includes("release");
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+    <motion.article
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.03 }}
+      className="bg-background"
     >
-      <Link to={`/forum/thread/${thread.id}`}>
-        <Card className="border-border/50 bg-card/50 backdrop-blur hover:bg-card/80 hover:border-primary/30 transition-all duration-200 group">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex gap-4">
-              {/* Vote buttons */}
-              <div className="hidden sm:block" onClick={(e) => e.preventDefault()}>
-                <VoteButtons threadId={thread.id} orientation="vertical" />
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  {thread.pinned && (
-                    <Badge variant="secondary" className="gap-1 text-xs">
-                      <Pin className="w-3 h-3" />
-                      Pinned
-                    </Badge>
-                  )}
-                  {thread.forums && (
-                    <Badge variant="outline" className="text-xs">
-                      {thread.forums.title}
-                    </Badge>
-                  )}
-                </div>
-
-                <h3 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
-                  {thread.title}
-                </h3>
-
-                <p className="text-muted-foreground text-sm mt-1 line-clamp-2">
-                  {thread.body}
-                </p>
-
-                <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    <span>{thread.profiles?.display_name || "Anonymous"}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{timeAgo}</span>
-                  </div>
-                  <div className="flex items-center gap-1 sm:hidden">
-                    <MessageSquare className="w-3 h-3" />
-                    <span>{thread.comment_count} comments</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Comment count - desktop */}
-              <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-sm">{thread.comment_count}</span>
-              </div>
+      {/* Post Header - Author Info */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <Link to={`/forum/thread/${thread.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+          <Avatar className="w-10 h-10 ring-2 ring-primary/20">
+            <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+            <AvatarFallback className="bg-gradient-primary text-primary-foreground font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm truncate">{displayName}</span>
+              {isPinned && (
+                <Pin className="w-3.5 h-3.5 text-primary shrink-0" />
+              )}
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{timeAgo}</span>
+              {thread.forums && (
+                <>
+                  <span>•</span>
+                  <span className="text-primary/80">{thread.forums.title}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>Copy Link</DropdownMenuItem>
+            <DropdownMenuItem>Report</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Post Content */}
+      <Link to={`/forum/thread/${thread.id}`} className="block">
+        {/* Optional Music Visual for music-related posts */}
+        {isMusicPost && (
+          <div className="aspect-video bg-gradient-to-br from-primary/20 via-background to-primary/10 flex items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,180,0,0.1),transparent_70%)]" />
+            <Disc3 className="w-20 h-20 text-primary/30 animate-spin" style={{ animationDuration: '8s' }} />
+            <Music className="w-8 h-8 text-primary absolute" />
+          </div>
+        )}
+
+        {/* Text Content */}
+        <div className="px-4 pb-3">
+          <h3 className="font-semibold text-base mb-1.5 line-clamp-2">
+            {thread.title}
+          </h3>
+          <p className="text-muted-foreground text-sm line-clamp-3 leading-relaxed">
+            {thread.body}
+          </p>
+        </div>
       </Link>
-    </motion.div>
+
+      {/* Action Bar */}
+      <div className="flex items-center gap-1 px-2 pb-3 border-b border-transparent">
+        <div onClick={(e) => e.preventDefault()}>
+          <VoteButtons threadId={thread.id} orientation="horizontal" size="sm" />
+        </div>
+
+        <Link 
+          to={`/forum/thread/${thread.id}`} 
+          className="flex items-center gap-1.5 px-3 py-2 rounded-full hover:bg-muted/50 transition-colors text-muted-foreground"
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-sm">{thread.comment_count}</span>
+        </Link>
+
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 ml-auto">
+          <Share2 className="w-5 h-5 text-muted-foreground" />
+        </Button>
+      </div>
+
+      {/* Comment Preview - if there are comments */}
+      {thread.comment_count > 0 && (
+        <Link 
+          to={`/forum/thread/${thread.id}`}
+          className="block px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          View all {thread.comment_count} comment{thread.comment_count !== 1 ? 's' : ''}
+        </Link>
+      )}
+    </motion.article>
   );
 }
