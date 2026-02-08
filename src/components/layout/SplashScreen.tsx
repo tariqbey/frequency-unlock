@@ -59,21 +59,6 @@ export function SplashScreen({ isVisible, onAnimationComplete }: SplashScreenPro
             >
               Download the Frequency
             </motion.p>
-            
-            {/* Loading bar */}
-            <motion.div
-              className="mt-8 h-1 w-48 rounded-full bg-muted overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              <motion.div
-                className="h-full bg-primary rounded-full"
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 1.2, delay: 0.7, ease: "easeInOut" }}
-              />
-            </motion.div>
           </motion.div>
         </motion.div>
       )}
