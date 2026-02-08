@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
 import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
 import { Radio, Headphones, Download, Music2 } from "lucide-react";
-
+import { useEffect, useRef } from "react";
 const features = [
   {
     icon: Music2,
@@ -24,21 +24,58 @@ const features = [
 ];
 
 export default function Index() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Force play on mobile - browsers often block autoplay
+    const playVideo = async () => {
+      try {
+        await video.play();
+      } catch (e) {
+        // If autoplay fails, try on first user interaction
+        const handleInteraction = async () => {
+          try {
+            await video.play();
+            document.removeEventListener('touchstart', handleInteraction);
+            document.removeEventListener('click', handleInteraction);
+          } catch (err) {
+            console.log('Video play failed:', err);
+          }
+        };
+        document.addEventListener('touchstart', handleInteraction, { once: true });
+        document.addEventListener('click', handleInteraction, { once: true });
+      }
+    };
+
+    // Try to play immediately
+    playVideo();
+
+    // Also try when video is ready
+    video.addEventListener('canplay', playVideo);
+    
+    return () => {
+      video.removeEventListener('canplay', playVideo);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen relative">
       {/* Fixed Background Video - no controls, auto-loops silently */}
       <video
+        ref={videoRef}
         autoPlay
         muted
         loop
         playsInline
+        preload="auto"
         controls={false}
         disablePictureInPicture
         disableRemotePlayback
         className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none"
         style={{ zIndex: 0 }}
-        // suppress native loading indicator
-        onLoadStart={(e) => { e.currentTarget.setAttribute('preload', 'auto'); }}
       >
         <source src="/videos/hero-background.mp4" type="video/mp4" />
       </video>
