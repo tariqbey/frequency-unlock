@@ -373,3 +373,24 @@ video {
 video::backdrop {
   background: transparent;
 }
+
+/* Hide iOS play button overlay */
+.video-background::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+}
+
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+}
+
+/* Force hide all play overlays on mobile */
+video::before,
+video::after {
+  display: none !important;
+}

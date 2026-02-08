@@ -70,11 +70,13 @@ export default function Index() {
         muted
         loop
         playsInline
+        // @ts-ignore - webkit attribute for older iOS
+        webkit-playsinline="true"
         preload="auto"
         controls={false}
         disablePictureInPicture
         disableRemotePlayback
-        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none"
+        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none video-background"
         style={{ zIndex: 0 }}
       >
         <source src="/videos/hero-background.mp4" type="video/mp4" />
