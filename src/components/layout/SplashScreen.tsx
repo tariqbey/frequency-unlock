@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import logoImage from "@/assets/363-music-logo.png";
+import logoImage from "@/assets/363-music-logo-transparent.png";
 
 interface SplashScreenProps {
   isVisible: boolean;
