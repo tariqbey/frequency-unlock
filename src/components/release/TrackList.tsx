@@ -11,10 +11,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Play, Pause, Download, MessageSquare, Heart, Share2, ListPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AddToPlaylistDialog } from "@/components/playlist/AddToPlaylistDialog";
+import { TrackCommentaryDialog } from "./TrackCommentaryDialog";
+
+interface TrackCommentary {
+  id: string;
+  commentary_text: string;
+  commentary_audio_path: string | null;
+  timestamp_notes_json: Record<string, string> | null;
+}
 
 interface Track {
   id: string;
@@ -22,9 +36,7 @@ interface Track {
   track_number: number;
   audio_path: string;
   duration_seconds: number | null;
-  track_commentary?: {
-    commentary_text: string;
-  }[];
+  track_commentary?: TrackCommentary[];
 }
 
 interface TrackListProps {
@@ -38,8 +50,6 @@ interface TrackListProps {
     };
   };
   hasUnlockedDownloads: boolean;
-  onShowCommentary: (trackId: string) => void;
-  activeCommentaryTrackId: string | null;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -53,18 +63,23 @@ export function TrackList({
   tracks,
   release,
   hasUnlockedDownloads,
-  onShowCommentary,
-  activeCommentaryTrackId,
 }: TrackListProps) {
   const { currentTrack, isPlaying, play, pause, resume } = usePlayer();
   const { isTrackFavorited, toggleTrackFavorite } = useFavorites();
   const { user } = useAuth();
   const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+  const [commentaryDialogOpen, setCommentaryDialogOpen] = useState(false);
+  const [commentaryTrack, setCommentaryTrack] = useState<Track | null>(null);
 
   const openPlaylistDialog = (track: Track) => {
     setSelectedTrack(track);
     setPlaylistDialogOpen(true);
+  };
+
+  const openCommentaryDialog = (track: Track) => {
+    setCommentaryTrack(track);
+    setCommentaryDialogOpen(true);
   };
 
   const handlePlayTrack = (track: Track) => {
@@ -231,17 +246,29 @@ export function TrackList({
               )}
             </div>
 
-            {/* Commentary button */}
-            {hasCommentary && (
-              <Button
-                variant={activeCommentaryTrackId === track.id ? "default" : "ghost"}
-                size="icon"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => onShowCommentary(track.id)}
-              >
-                <MessageSquare className="w-4 h-4" />
-              </Button>
-            )}
+            {/* Commentary button - always visible */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={hasCommentary ? "ghost" : "ghost"}
+                    size="icon"
+                    className={cn(
+                      "transition-opacity",
+                      hasCommentary 
+                        ? "text-primary opacity-100" 
+                        : "opacity-0 group-hover:opacity-100"
+                    )}
+                    onClick={() => openCommentaryDialog(track)}
+                  >
+                    <MessageSquare className={cn("w-4 h-4", hasCommentary && "fill-primary/20")} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {hasCommentary ? "View artist commentary & comments" : "View track comments"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             {/* Favorite button */}
             <Button
@@ -329,6 +356,17 @@ export function TrackList({
         onOpenChange={setPlaylistDialogOpen}
         trackId={selectedTrack?.id || ""}
         trackTitle={selectedTrack?.title || ""}
+      />
+
+      {/* Track Commentary Dialog */}
+      <TrackCommentaryDialog
+        open={commentaryDialogOpen}
+        onOpenChange={setCommentaryDialogOpen}
+        trackId={commentaryTrack?.id || ""}
+        trackTitle={commentaryTrack?.title || ""}
+        artistName={release.artist.name}
+        releaseId={release.id}
+        commentary={commentaryTrack?.track_commentary?.[0] || null}
       />
     </div>
   );
