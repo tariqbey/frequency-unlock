@@ -62,19 +62,22 @@ export function FullPlayer() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background overflow-hidden"
+      className="fixed inset-0 z-50 overflow-hidden"
+      style={{
+        background: "linear-gradient(180deg, hsl(270 40% 12%) 0%, hsl(260 30% 6%) 60%, hsl(260 25% 4%) 100%)",
+      }}
     >
-      {/* Dynamic gradient background based on playing state */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-background/95 to-background" />
-      
-      {/* Circular pulse effect behind album art */}
+      {/* Subtle purple glow behind album art */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <AudioVisualizer variant="pulse" className="w-[600px] h-[600px]" />
+        <div
+          className="w-[500px] h-[500px] rounded-full opacity-30 blur-[120px]"
+          style={{ background: "radial-gradient(circle, hsl(270 85% 60% / 0.6), transparent 70%)" }}
+        />
       </div>
-      
-      {/* Animated background visualizer - more prominent */}
+
+      {/* Animated background visualizer */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0 h-2/3 opacity-25">
+        <div className="absolute bottom-0 left-0 right-0 h-2/3 opacity-15">
           <AudioVisualizer barCount={100} variant="bars" className="h-full" />
         </div>
       </div>
@@ -96,40 +99,50 @@ export function FullPlayer() {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8 gap-6 sm:gap-8">
-          {/* Album art with visualizer overlay */}
+          {/* Circular album art with purple ring */}
           <motion.div
-            className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96"
+            className="relative"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Circular visualizer ring around album art */}
-            <div className="absolute -inset-6 sm:-inset-8">
-              <AudioVisualizer variant="circular" className="w-full h-full" />
-            </div>
+            {/* Outer glow ring */}
+            <div
+              className="absolute -inset-4 rounded-full opacity-50"
+              style={{
+                background: "conic-gradient(from 0deg, hsl(270 85% 60% / 0.4), hsl(290 85% 60% / 0.2), hsl(260 85% 60% / 0.4), hsl(280 85% 60% / 0.2), hsl(270 85% 60% / 0.4))",
+                filter: "blur(12px)",
+              }}
+            />
             
-            <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-primary/30">
+            {/* Album art - circular */}
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-80 lg:h-80 rounded-full overflow-hidden border-2 border-primary/30 shadow-2xl shadow-primary/20">
               {currentTrack.release.cover_art_url ? (
                 <img
                   src={currentTrack.release.cover_art_url}
                   alt={currentTrack.release.title}
-                  className="w-full h-full object-cover"
+                  className={cn(
+                    "w-full h-full object-cover",
+                    isPlaying && "animate-[spin_20s_linear_infinite]"
+                  )}
                 />
               ) : (
                 <div className="w-full h-full bg-muted flex items-center justify-center">
-                  <Disc3 className="w-24 h-24 text-muted-foreground animate-spin-slow" />
+                  <Disc3 className={cn(
+                    "w-24 h-24 text-muted-foreground",
+                    isPlaying && "animate-[spin_3s_linear_infinite]"
+                  )} />
                 </div>
               )}
-            </div>
-            
-            {/* Prominent visualizer bar below album art */}
-            <div className="absolute -bottom-8 left-0 right-0 h-14 px-4">
-              <AudioVisualizer barCount={48} variant="wave" className="h-full" />
+              {/* Center hole for vinyl effect */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-8 h-8 rounded-full bg-background/80 border border-primary/20" />
+              </div>
             </div>
           </motion.div>
 
           {/* Track info */}
-          <div className="text-center max-w-md mt-4">
+          <div className="text-center max-w-md mt-2">
             <div className="flex items-center justify-center gap-3">
               <h2 className="font-display text-xl sm:text-2xl font-bold truncate">
                 {currentTrack.title}
@@ -153,7 +166,7 @@ export function FullPlayer() {
             </p>
           </div>
 
-          {/* Progress bar - Spotify style */}
+          {/* Progress bar */}
           <div className="w-full max-w-md space-y-2">
             <Slider
               value={[progress]}
@@ -168,7 +181,7 @@ export function FullPlayer() {
             </div>
           </div>
 
-          {/* Controls - Spotify style layout */}
+          {/* Controls */}
           <div className="flex items-center gap-6 sm:gap-8">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Shuffle className="w-5 h-5" />
@@ -179,9 +192,8 @@ export function FullPlayer() {
             </Button>
 
             <Button
-              variant="hero"
               onClick={isPlaying ? pause : resume}
-              className="w-16 h-16 rounded-full"
+              className="w-16 h-16 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/40"
             >
               {isPlaying ? (
                 <Pause className="w-8 h-8" fill="currentColor" />

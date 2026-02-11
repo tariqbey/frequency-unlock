@@ -7,79 +7,79 @@
 
 @layer base {
   :root {
-    /* Core palette - Deep dark with gold accent */
-    --background: 240 10% 4%;
+    /* Core palette - Deep dark with vibrant purple */
+    --background: 260 25% 4%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 6%;
+    --card: 260 25% 7%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 8%;
+    --popover: 260 25% 9%;
     --popover-foreground: 0 0% 98%;
 
-    /* Gold - Primary brand color */
-    --primary: 45 90% 55%;
-    --primary-foreground: 0 0% 5%;
+    /* Vivid Purple - Primary brand color */
+    --primary: 270 85% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Muted golds for secondary */
-    --secondary: 45 30% 15%;
-    --secondary-foreground: 45 40% 85%;
+    /* Muted purples for secondary */
+    --secondary: 270 30% 18%;
+    --secondary-foreground: 270 40% 85%;
 
-    --muted: 240 10% 12%;
-    --muted-foreground: 240 5% 55%;
+    --muted: 260 20% 12%;
+    --muted-foreground: 260 10% 55%;
 
-    /* Accent - Brighter gold for highlights */
-    --accent: 38 95% 60%;
-    --accent-foreground: 0 0% 5%;
+    /* Accent - Electric violet for highlights */
+    --accent: 280 90% 65%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 45 20% 18%;
-    --input: 45 20% 15%;
-    --ring: 45 90% 55%;
+    --border: 270 20% 18%;
+    --input: 270 20% 15%;
+    --ring: 270 85% 60%;
 
     --radius: 0.75rem;
 
     /* Custom 363 Music tokens */
-    --glow-primary: 45 90% 55%;
-    --glow-accent: 38 95% 60%;
-    --gradient-start: 45 90% 50%;
-    --gradient-end: 30 85% 55%;
-    --surface-glass: 45 20% 10%;
+    --glow-primary: 270 85% 60%;
+    --glow-accent: 280 90% 65%;
+    --gradient-start: 260 80% 55%;
+    --gradient-end: 290 85% 60%;
+    --surface-glass: 270 20% 10%;
     
     /* Sidebar tokens */
-    --sidebar-background: 240 10% 5%;
+    --sidebar-background: 260 25% 5%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 45 90% 55%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 45 30% 20%;
+    --sidebar-primary: 270 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 30% 20%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 45 20% 15%;
-    --sidebar-ring: 45 90% 55%;
+    --sidebar-border: 270 20% 15%;
+    --sidebar-ring: 270 85% 60%;
   }
 
   .dark {
     /* Dark mode is default - same values */
-    --background: 240 10% 4%;
+    --background: 260 25% 4%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
+    --card: 260 25% 7%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 8%;
+    --popover: 260 25% 9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 45 90% 55%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 45 30% 15%;
-    --secondary-foreground: 45 40% 85%;
-    --muted: 240 10% 12%;
-    --muted-foreground: 240 5% 55%;
-    --accent: 38 95% 60%;
-    --accent-foreground: 0 0% 5%;
+    --primary: 270 85% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 30% 18%;
+    --secondary-foreground: 270 40% 85%;
+    --muted: 260 20% 12%;
+    --muted-foreground: 260 10% 55%;
+    --accent: 280 90% 65%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 45 20% 18%;
-    --input: 45 20% 15%;
-    --ring: 45 90% 55%;
+    --border: 270 20% 18%;
+    --input: 270 20% 15%;
+    --ring: 270 85% 60%;
   }
 }
 
@@ -398,11 +398,11 @@ video::after {
 /* Animated hero background - primary visual, video is progressive enhancement */
 .hero-animated-bg {
   background: 
-    radial-gradient(ellipse 150% 100% at 20% 80%, hsl(var(--primary) / 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse 100% 80% at 80% 20%, hsl(var(--accent) / 0.25) 0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 50% 50%, hsl(var(--primary) / 0.15) 0%, transparent 60%),
-    radial-gradient(circle at 30% 40%, hsl(var(--primary) / 0.2) 0%, transparent 40%),
-    hsl(var(--background));
+    radial-gradient(ellipse 150% 100% at 20% 80%, hsl(270 85% 60% / 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 80% at 80% 20%, hsl(280 90% 65% / 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 50% 50%, hsl(270 85% 60% / 0.15) 0%, transparent 60%),
+    radial-gradient(circle at 30% 40%, hsl(260 80% 55% / 0.2) 0%, transparent 40%),
+    hsl(260 25% 4%);
   background-size: 200% 200%, 200% 200%, 150% 150%, 100% 100%, 100% 100%;
   animation: hero-bg-shift 12s ease-in-out infinite alternate;
 }
