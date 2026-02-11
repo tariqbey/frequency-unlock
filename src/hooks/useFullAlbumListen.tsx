@@ -176,20 +176,14 @@ export function FullAlbumListenProvider({ children }: { children: ReactNode }) {
   );
 
   const canSkip = useCallback(() => {
-    // Skipping is not allowed during a full listen session
-    return !activeSession?.isActive;
-  }, [activeSession]);
+    // Skipping is allowed even during full listen sessions
+    return true;
+  }, []);
 
   const attemptSkip = useCallback(() => {
-    if (!activeSession?.isActive) {
-      return true; // Allow skip if no active session
-    }
-
-    toast.warning("Skipping disabled in Full Album Mode. Listen to the complete track to continue.", {
-      duration: 3000,
-    });
-    return false;
-  }, [activeSession]);
+    // Always allow skipping
+    return true;
+  }, []);
 
   const getProgress = useCallback(() => {
     if (!activeSession) {
