@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
 import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
 import { Radio, Headphones, Download, Music2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 const features = [
   {
     icon: Music2,
@@ -25,12 +25,12 @@ const features = [
 
 export default function Index() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Ensure video attributes are set programmatically for iOS
     video.muted = true;
     video.playsInline = true;
     video.loop = true;
@@ -40,39 +40,38 @@ export default function Index() {
     video.autoplay = true;
     video.preload = 'auto';
 
+    let hasPlayed = false;
+
     const attemptPlay = async () => {
+      if (hasPlayed) return;
       try {
-        // Reset to beginning if needed
         if (video.paused) {
-          video.muted = true; // Re-ensure muted (iOS requirement)
+          video.muted = true;
           await video.play();
+          hasPlayed = true;
         }
       } catch (e) {
-        console.log('Autoplay attempt failed, will retry:', e);
+        // silent
       }
     };
 
-    // Try immediately
     attemptPlay();
-
-    // Try on various ready states
     video.addEventListener('loadedmetadata', attemptPlay);
     video.addEventListener('loadeddata', attemptPlay);
     video.addEventListener('canplay', attemptPlay);
     video.addEventListener('canplaythrough', attemptPlay);
 
-    // Retry periodically for first few seconds (iOS sometimes needs a delay)
     const retries = [100, 300, 500, 1000, 2000, 3000];
     const timers = retries.map(delay => setTimeout(attemptPlay, delay));
 
-    // Fallback: play on first user interaction
+    // After 4s if still not playing, show CSS fallback
+    const failTimer = setTimeout(() => {
+      if (video.paused) setVideoFailed(true);
+    }, 4000);
+
     const handleInteraction = async () => {
       video.muted = true;
-      try {
-        await video.play();
-      } catch (err) {
-        console.log('Interaction play failed:', err);
-      }
+      try { await video.play(); hasPlayed = true; setVideoFailed(false); } catch {}
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('scroll', handleInteraction);
@@ -81,21 +80,9 @@ export default function Index() {
     document.addEventListener('click', handleInteraction, { passive: true });
     document.addEventListener('scroll', handleInteraction, { passive: true });
 
-    // Also use IntersectionObserver to play when visible
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            attemptPlay();
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(video);
-
     return () => {
       timers.forEach(clearTimeout);
+      clearTimeout(failTimer);
       video.removeEventListener('loadedmetadata', attemptPlay);
       video.removeEventListener('loadeddata', attemptPlay);
       video.removeEventListener('canplay', attemptPlay);
@@ -103,12 +90,16 @@ export default function Index() {
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('scroll', handleInteraction);
-      observer.disconnect();
     };
   }, []);
 
   return (
     <div className="min-h-screen relative">
+      {/* Animated CSS fallback - shows when video can't autoplay */}
+      {videoFailed && (
+        <div className="fixed top-0 left-0 w-full h-screen hero-animated-bg" style={{ zIndex: 0 }} />
+      )}
+
       {/* Fixed Background Video - no controls, auto-loops silently */}
       <video
         ref={videoRef}
