@@ -313,6 +313,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!audioRef.current) return;
 
     setCurrentTrack(track);
+    setIsExpanded(true);
     if (newQueue) setQueue(newQueue);
 
     // Log play event
