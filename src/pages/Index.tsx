@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
 import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
 import { Radio, Headphones, Download, Music2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 const features = [
   {
     icon: Music2,
@@ -25,7 +25,6 @@ const features = [
 
 export default function Index() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -64,14 +63,9 @@ export default function Index() {
     const retries = [100, 300, 500, 1000, 2000, 3000];
     const timers = retries.map(delay => setTimeout(attemptPlay, delay));
 
-    // After 4s if still not playing, show CSS fallback
-    const failTimer = setTimeout(() => {
-      if (video.paused) setVideoFailed(true);
-    }, 4000);
-
     const handleInteraction = async () => {
       video.muted = true;
-      try { await video.play(); hasPlayed = true; setVideoFailed(false); } catch {}
+      try { await video.play(); hasPlayed = true; } catch {}
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('scroll', handleInteraction);
@@ -82,7 +76,7 @@ export default function Index() {
 
     return () => {
       timers.forEach(clearTimeout);
-      clearTimeout(failTimer);
+      
       video.removeEventListener('loadedmetadata', attemptPlay);
       video.removeEventListener('loadeddata', attemptPlay);
       video.removeEventListener('canplay', attemptPlay);
@@ -95,12 +89,10 @@ export default function Index() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Animated CSS fallback - shows when video can't autoplay */}
-      {videoFailed && (
-        <div className="fixed top-0 left-0 w-full h-screen hero-animated-bg" style={{ zIndex: 0 }} />
-      )}
+      {/* Animated CSS background - always visible as base layer */}
+      <div className="fixed top-0 left-0 w-full h-screen hero-animated-bg" style={{ zIndex: 0 }} />
 
-      {/* Fixed Background Video - no controls, auto-loops silently */}
+      {/* Background Video - layered on top of CSS fallback, only visible when playing */}
       <video
         ref={videoRef}
         autoPlay
@@ -114,16 +106,16 @@ export default function Index() {
         disablePictureInPicture
         disableRemotePlayback
         className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none video-background"
-        style={{ zIndex: 0 }}
+        style={{ zIndex: 1 }}
       >
         <source src="/videos/hero-background.mp4" type="video/mp4" />
       </video>
 
       {/* Dark overlay for hero section - also fixed */}
-      <div className="fixed top-0 left-0 w-full h-screen bg-background/60" style={{ zIndex: 1 }} />
+      <div className="fixed top-0 left-0 w-full h-screen bg-background/60" style={{ zIndex: 2 }} />
 
       {/* Video Hero Section */}
-      <section className="relative h-screen w-full overflow-hidden" style={{ zIndex: 2 }}>
+      <section className="relative h-screen w-full overflow-hidden" style={{ zIndex: 3 }}>
 
         {/* Navigation */}
         <nav className="absolute top-0 left-0 right-0 z-20 px-6 py-4 md:px-12">
@@ -191,7 +183,7 @@ export default function Index() {
       </section>
 
       {/* Mission Statement Section */}
-      <section className="relative py-32 px-6 md:px-12 bg-background" style={{ zIndex: 2 }}>
+      <section className="relative py-32 px-6 md:px-12 bg-background" style={{ zIndex: 3 }}>
         <motion.div
           className="max-w-4xl mx-auto"
           initial={{ opacity: 0, y: 40 }}
@@ -209,7 +201,7 @@ export default function Index() {
       </section>
 
       {/* Featured Artists Section */}
-      <section className="relative py-24 px-6 md:px-12 bg-primary" style={{ zIndex: 2 }}>
+      <section className="relative py-24 px-6 md:px-12 bg-primary" style={{ zIndex: 3 }}>
         <div className="max-w-7xl mx-auto">
           <motion.div
             className="mb-12"
@@ -230,7 +222,7 @@ export default function Index() {
       </section>
 
       {/* Features Section */}
-      <section className="relative py-24 px-6 md:px-12 bg-background" style={{ zIndex: 2 }}>
+      <section className="relative py-24 px-6 md:px-12 bg-background" style={{ zIndex: 3 }}>
         <div className="max-w-7xl mx-auto">
           <motion.div
             className="text-center mb-16"
@@ -275,7 +267,7 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-24 px-6 md:px-12 bg-muted/30" style={{ zIndex: 2 }}>
+      <section className="relative py-24 px-6 md:px-12 bg-muted/30" style={{ zIndex: 3 }}>
         <motion.div
           className="max-w-2xl mx-auto text-center relative z-10"
           initial={{ opacity: 0, y: 20 }}
@@ -295,7 +287,7 @@ export default function Index() {
       </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-border/50 py-8 px-6 md:px-12 bg-background" style={{ zIndex: 2 }}>
+      <footer className="relative border-t border-border/50 py-8 px-6 md:px-12 bg-background" style={{ zIndex: 3 }}>
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
           <p className="text-sm text-muted-foreground">
