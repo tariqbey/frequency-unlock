@@ -174,7 +174,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -187,12 +187,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
   const trackCompleteCallbackRef = useRef<((trackId: string) => void) | null>(null);
 
-  // Initialize audio element and Web Audio API for visualizations
+  // Initialize audio element
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.volume = volume;
-      audioRef.current.crossOrigin = "anonymous";
     }
 
     const audio = audioRef.current;
@@ -272,14 +271,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [currentTrack, queue]);
 
-  // Setup Web Audio API for visualizations
+  // Setup Web Audio API for visualizations (does NOT route playback through AudioContext)
   const setupAudioContext = useCallback(async () => {
     if (!audioRef.current || audioContextRef.current) return;
 
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      // Resume audio context if suspended (required for iOS)
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
       }
@@ -288,13 +286,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.8;
 
-      const source = audioContext.createMediaElementSource(audioRef.current);
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
+      // Use captureStream if available to avoid hijacking playback pipeline
+      // This keeps audio playing natively (even when screen is off) while still feeding the analyser
+      const audioEl = audioRef.current as any;
+      if (typeof audioEl.captureStream === 'function') {
+        const stream = audioEl.captureStream();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        // Do NOT connect analyser to destination — we don't want double audio
+      } else if (typeof audioEl.mozCaptureStream === 'function') {
+        const stream = audioEl.mozCaptureStream();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+      }
+      // If captureStream is not available (e.g. iOS Safari), we skip wiring —
+      // the visualizer will just show idle state, but audio keeps playing in background.
 
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
-      sourceRef.current = source;
     } catch (err) {
       console.error("Error setting up audio context:", err);
     }
@@ -343,6 +352,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const resume = useCallback(async () => {
     try {
+      // Resume AudioContext if suspended (iOS resumes it on user interaction)
+      if (audioContextRef.current?.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
       await audioRef.current?.play();
     } catch (err) {
       console.error("Error resuming:", err);
