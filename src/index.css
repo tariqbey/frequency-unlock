@@ -7,14 +7,15 @@
 
 @layer base {
   :root {
-    /* Core palette - Deep dark with vibrant purple */
-    --background: 260 25% 4%;
+    /* Core palette - Deep purple matching player UI */
+    --background: 265 35% 8%;
     --foreground: 0 0% 98%;
 
-    --card: 260 25% 7%;
+    --card: 265 30% 12%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 260 25% 9%;
+    --popover: 265 30% 14%;
+    --popover-foreground: 0 0% 98%;
     --popover-foreground: 0 0% 98%;
 
     /* Vivid Purple - Primary brand color */
@@ -25,8 +26,8 @@
     --secondary: 270 30% 18%;
     --secondary-foreground: 270 40% 85%;
 
-    --muted: 260 20% 12%;
-    --muted-foreground: 260 10% 55%;
+    --muted: 265 25% 15%;
+    --muted-foreground: 265 15% 55%;
 
     /* Accent - Electric violet for highlights */
     --accent: 280 90% 65%;
@@ -35,8 +36,8 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 270 20% 18%;
-    --input: 270 20% 15%;
+    --border: 270 25% 20%;
+    --input: 270 25% 18%;
     --ring: 270 85% 60%;
 
     --radius: 0.75rem;
@@ -46,39 +47,39 @@
     --glow-accent: 280 90% 65%;
     --gradient-start: 260 80% 55%;
     --gradient-end: 290 85% 60%;
-    --surface-glass: 270 20% 10%;
+    --surface-glass: 265 30% 14%;
     
     /* Sidebar tokens */
-    --sidebar-background: 260 25% 5%;
+    --sidebar-background: 265 35% 6%;
     --sidebar-foreground: 0 0% 90%;
     --sidebar-primary: 270 85% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 30% 20%;
+    --sidebar-accent: 270 30% 22%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 270 20% 15%;
+    --sidebar-border: 270 25% 18%;
     --sidebar-ring: 270 85% 60%;
   }
 
   .dark {
     /* Dark mode is default - same values */
-    --background: 260 25% 4%;
+    --background: 265 35% 8%;
     --foreground: 0 0% 98%;
-    --card: 260 25% 7%;
+    --card: 265 30% 12%;
     --card-foreground: 0 0% 98%;
-    --popover: 260 25% 9%;
+    --popover: 265 30% 14%;
     --popover-foreground: 0 0% 98%;
     --primary: 270 85% 60%;
     --primary-foreground: 0 0% 100%;
     --secondary: 270 30% 18%;
     --secondary-foreground: 270 40% 85%;
-    --muted: 260 20% 12%;
-    --muted-foreground: 260 10% 55%;
+    --muted: 265 25% 15%;
+    --muted-foreground: 265 15% 55%;
     --accent: 280 90% 65%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 270 20% 18%;
-    --input: 270 20% 15%;
+    --border: 270 25% 20%;
+    --input: 270 25% 18%;
     --ring: 270 85% 60%;
   }
 }
