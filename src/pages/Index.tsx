@@ -54,6 +54,15 @@ export default function Index() {
     attemptPlay();
     const timers = [100, 500, 1500, 3000].map(d => setTimeout(attemptPlay, d));
 
+    // Re-start video whenever tab becomes visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') attemptPlay();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Periodic watchdog: if video pauses for any reason, restart it
+    const watchdog = setInterval(attemptPlay, 2000);
+
     const handleInteraction = () => {
       attemptPlay();
       document.removeEventListener('touchstart', handleInteraction);
@@ -64,8 +73,10 @@ export default function Index() {
 
     return () => {
       timers.forEach(clearTimeout);
+      clearInterval(watchdog);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('pause', onPause);
+      document.removeEventListener('visibilitychange', handleVisibility);
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('click', handleInteraction);
     };
