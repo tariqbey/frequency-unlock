@@ -56,6 +56,7 @@
         ]
       },
        workbox: {
+         navigateFallbackDenylist: [/^\/~oauth/],
          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
          runtimeCaching: [
