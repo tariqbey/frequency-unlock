@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/Logo";
 import { FeaturedArtistCarousel } from "@/components/home/FeaturedArtistCarousel";
 import { Radio, Headphones, Download, Music2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 const features = [
   {
     icon: Music2,
@@ -25,6 +25,7 @@ const features = [
 
 export default function Index() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -33,57 +34,40 @@ export default function Index() {
     video.muted = true;
     video.playsInline = true;
     video.loop = true;
-    video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');
-    video.setAttribute('muted', '');
     video.autoplay = true;
     video.preload = 'auto';
 
-    let hasPlayed = false;
+    const onPlaying = () => setVideoPlaying(true);
+    const onPause = () => setVideoPlaying(false);
+    video.addEventListener('playing', onPlaying);
+    video.addEventListener('pause', onPause);
 
     const attemptPlay = async () => {
-      if (hasPlayed) return;
       try {
         if (video.paused) {
           video.muted = true;
           await video.play();
-          hasPlayed = true;
         }
-      } catch (e) {
-        // silent
-      }
+      } catch {}
     };
 
     attemptPlay();
-    video.addEventListener('loadedmetadata', attemptPlay);
-    video.addEventListener('loadeddata', attemptPlay);
-    video.addEventListener('canplay', attemptPlay);
-    video.addEventListener('canplaythrough', attemptPlay);
+    const timers = [100, 500, 1500, 3000].map(d => setTimeout(attemptPlay, d));
 
-    const retries = [100, 300, 500, 1000, 2000, 3000];
-    const timers = retries.map(delay => setTimeout(attemptPlay, delay));
-
-    const handleInteraction = async () => {
-      video.muted = true;
-      try { await video.play(); hasPlayed = true; } catch {}
+    const handleInteraction = () => {
+      attemptPlay();
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('scroll', handleInteraction);
     };
     document.addEventListener('touchstart', handleInteraction, { passive: true });
     document.addEventListener('click', handleInteraction, { passive: true });
-    document.addEventListener('scroll', handleInteraction, { passive: true });
 
     return () => {
       timers.forEach(clearTimeout);
-      
-      video.removeEventListener('loadedmetadata', attemptPlay);
-      video.removeEventListener('loadeddata', attemptPlay);
-      video.removeEventListener('canplay', attemptPlay);
-      video.removeEventListener('canplaythrough', attemptPlay);
+      video.removeEventListener('playing', onPlaying);
+      video.removeEventListener('pause', onPause);
       document.removeEventListener('touchstart', handleInteraction);
       document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('scroll', handleInteraction);
     };
   }, []);
 
@@ -105,8 +89,8 @@ export default function Index() {
         controls={false}
         disablePictureInPicture
         disableRemotePlayback
-        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none video-background"
-        style={{ zIndex: 1 }}
+        className="fixed top-0 left-0 w-full h-screen object-cover pointer-events-none select-none video-background transition-opacity duration-1000"
+        style={{ zIndex: 1, opacity: videoPlaying ? 1 : 0 }}
       >
         <source src="/videos/hero-background.mp4" type="video/mp4" />
       </video>
