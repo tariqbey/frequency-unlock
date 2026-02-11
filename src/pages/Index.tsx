@@ -30,34 +30,80 @@ export default function Index() {
     const video = videoRef.current;
     if (!video) return;
 
-    // Force play on mobile - browsers often block autoplay
-    const playVideo = async () => {
+    // Ensure video attributes are set programmatically for iOS
+    video.muted = true;
+    video.playsInline = true;
+    video.loop = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('muted', '');
+    video.autoplay = true;
+    video.preload = 'auto';
+
+    const attemptPlay = async () => {
       try {
-        await video.play();
+        // Reset to beginning if needed
+        if (video.paused) {
+          video.muted = true; // Re-ensure muted (iOS requirement)
+          await video.play();
+        }
       } catch (e) {
-        // If autoplay fails, try on first user interaction
-        const handleInteraction = async () => {
-          try {
-            await video.play();
-            document.removeEventListener('touchstart', handleInteraction);
-            document.removeEventListener('click', handleInteraction);
-          } catch (err) {
-            console.log('Video play failed:', err);
-          }
-        };
-        document.addEventListener('touchstart', handleInteraction, { once: true });
-        document.addEventListener('click', handleInteraction, { once: true });
+        console.log('Autoplay attempt failed, will retry:', e);
       }
     };
 
-    // Try to play immediately
-    playVideo();
+    // Try immediately
+    attemptPlay();
 
-    // Also try when video is ready
-    video.addEventListener('canplay', playVideo);
-    
+    // Try on various ready states
+    video.addEventListener('loadedmetadata', attemptPlay);
+    video.addEventListener('loadeddata', attemptPlay);
+    video.addEventListener('canplay', attemptPlay);
+    video.addEventListener('canplaythrough', attemptPlay);
+
+    // Retry periodically for first few seconds (iOS sometimes needs a delay)
+    const retries = [100, 300, 500, 1000, 2000, 3000];
+    const timers = retries.map(delay => setTimeout(attemptPlay, delay));
+
+    // Fallback: play on first user interaction
+    const handleInteraction = async () => {
+      video.muted = true;
+      try {
+        await video.play();
+      } catch (err) {
+        console.log('Interaction play failed:', err);
+      }
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('scroll', handleInteraction);
+    };
+    document.addEventListener('touchstart', handleInteraction, { passive: true });
+    document.addEventListener('click', handleInteraction, { passive: true });
+    document.addEventListener('scroll', handleInteraction, { passive: true });
+
+    // Also use IntersectionObserver to play when visible
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            attemptPlay();
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(video);
+
     return () => {
-      video.removeEventListener('canplay', playVideo);
+      timers.forEach(clearTimeout);
+      video.removeEventListener('loadedmetadata', attemptPlay);
+      video.removeEventListener('loadeddata', attemptPlay);
+      video.removeEventListener('canplay', attemptPlay);
+      video.removeEventListener('canplaythrough', attemptPlay);
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('scroll', handleInteraction);
+      observer.disconnect();
     };
   }, []);
 
