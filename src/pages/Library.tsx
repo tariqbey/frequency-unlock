@@ -77,10 +77,10 @@ export default function Library() {
           {/* ===== Mobile Header: Centered logo + search icon ===== */}
           <div className="flex flex-col items-center mb-6 md:hidden relative">
             {/* Search icon top-right */}
-            <button className="absolute right-0 top-2 p-2 text-muted-foreground hover:text-foreground">
+            <button className="absolute right-0 top-4 p-2 text-muted-foreground hover:text-foreground">
               <Search className="w-5 h-5" />
             </button>
-            <Logo size="xl" showTagline={false} />
+            <Logo size="xxl" showTagline={false} />
           </div>
 
           {/* ===== Desktop header ===== */}

@@ -12,8 +12,8 @@ const imageSizes = {
   sm: "h-10 w-10",      // ~40px
   md: "h-12 w-12",      // ~48px
   lg: "h-16 w-16",      // ~64px
-  xl: "h-24 w-24",      // ~96px
-  xxl: "h-32 w-32",     // ~128px
+  xl: "h-28 w-28",      // ~112px
+  xxl: "h-40 w-40",     // ~160px
 };
 
 const taglineSizes = {
