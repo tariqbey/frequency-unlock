@@ -105,7 +105,7 @@ function AppContent() {
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<ProtectedRoute><Library /></ProtectedRoute>} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
           <Route path="/release/:id" element={<ProtectedRoute><Release /></ProtectedRoute>} />
