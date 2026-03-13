@@ -105,20 +105,20 @@ function AppContent() {
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+          <Route path="/" element={<Library />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-          <Route path="/release/:id" element={<ProtectedRoute><Release /></ProtectedRoute>} />
-          <Route path="/artist/:id" element={<ProtectedRoute><ArtistProfile /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-          <Route path="/downloads" element={<ProtectedRoute><Downloads /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/radio" element={<ProtectedRoute><Radio /></ProtectedRoute>} />
-          <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
-          <Route path="/playlist/:id" element={<ProtectedRoute><PlaylistDetail /></ProtectedRoute>} />
-          <Route path="/forum" element={<ProtectedRoute><ForumPage /></ProtectedRoute>} />
-          <Route path="/forum/new" element={<ProtectedRoute><ForumNewThread /></ProtectedRoute>} />
-          <Route path="/forum/thread/:id" element={<ProtectedRoute><ForumThread /></ProtectedRoute>} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/release/:id" element={<Release />} />
+          <Route path="/artist/:id" element={<ArtistProfile />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/downloads" element={<Downloads />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/radio" element={<Radio />} />
+          <Route path="/playlists" element={<Playlists />} />
+          <Route path="/playlist/:id" element={<PlaylistDetail />} />
+          <Route path="/forum" element={<ForumPage />} />
+          <Route path="/forum/new" element={<ForumNewThread />} />
+          <Route path="/forum/thread/:id" element={<ForumThread />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/applications" element={<AdminRoute><AdminApplications /></AdminRoute>} />
           <Route path="/admin/artists" element={<AdminRoute><AdminArtists /></AdminRoute>} />
