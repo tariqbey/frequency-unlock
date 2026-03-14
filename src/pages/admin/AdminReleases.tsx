@@ -79,6 +79,7 @@ export default function AdminReleases() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [albumUploaderOpen, setAlbumUploaderOpen] = useState(false);
+  const [reuploadRelease, setReuploadRelease] = useState<{ id: string; title: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReleaseForm>(initialForm);
   // Fetch releases
