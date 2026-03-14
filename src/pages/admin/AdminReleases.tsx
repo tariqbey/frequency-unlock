@@ -407,6 +407,16 @@ export default function AdminReleases() {
 
           {/* Album Uploader Dialog */}
           <AlbumUploader open={albumUploaderOpen} onOpenChange={setAlbumUploaderOpen} />
+
+          {/* Bulk Audio Re-upload Dialog */}
+          {reuploadRelease && (
+            <BulkAudioReupload
+              open={!!reuploadRelease}
+              onOpenChange={(open) => !open && setReuploadRelease(null)}
+              releaseId={reuploadRelease.id}
+              releaseTitle={reuploadRelease.title}
+            />
+          )}
         </div>
 
         {/* Search */}
