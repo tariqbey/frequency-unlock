@@ -492,7 +492,15 @@ export default function AdminReleases() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Re-upload audio files"
+                          onClick={() => setReuploadRelease({ id: release.id, title: release.title })}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
