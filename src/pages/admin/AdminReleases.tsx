@@ -33,7 +33,8 @@ import { FileUpload } from "@/components/admin/FileUpload";
 import { AlbumUploader } from "@/components/admin/AlbumUploader";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload, Star, RefreshCw } from "lucide-react";
+import { BulkAudioReupload } from "@/components/admin/BulkAudioReupload";
 
 interface Release {
   id: string;
@@ -78,6 +79,7 @@ export default function AdminReleases() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [albumUploaderOpen, setAlbumUploaderOpen] = useState(false);
+  const [reuploadRelease, setReuploadRelease] = useState<{ id: string; title: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReleaseForm>(initialForm);
   // Fetch releases
@@ -405,6 +407,16 @@ export default function AdminReleases() {
 
           {/* Album Uploader Dialog */}
           <AlbumUploader open={albumUploaderOpen} onOpenChange={setAlbumUploaderOpen} />
+
+          {/* Bulk Audio Re-upload Dialog */}
+          {reuploadRelease && (
+            <BulkAudioReupload
+              open={!!reuploadRelease}
+              onOpenChange={(open) => !open && setReuploadRelease(null)}
+              releaseId={reuploadRelease.id}
+              releaseTitle={reuploadRelease.title}
+            />
+          )}
         </div>
 
         {/* Search */}
@@ -490,7 +502,15 @@ export default function AdminReleases() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Re-upload audio files"
+                          onClick={() => setReuploadRelease({ id: release.id, title: release.title })}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
