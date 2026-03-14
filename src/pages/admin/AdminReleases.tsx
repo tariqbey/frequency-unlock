@@ -33,7 +33,8 @@ import { FileUpload } from "@/components/admin/FileUpload";
 import { AlbumUploader } from "@/components/admin/AlbumUploader";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Loader2, Search, Upload, Star, RefreshCw } from "lucide-react";
+import { BulkAudioReupload } from "@/components/admin/BulkAudioReupload";
 
 interface Release {
   id: string;
