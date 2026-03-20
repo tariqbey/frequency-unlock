@@ -58,7 +58,7 @@ interface Release {
 export default function Release() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { play } = usePlayer();
+  const { play, setFullListenMode } = usePlayer();
   const { activeSession, hasCompletedListen, startFullListenSession, cancelSession } = useFullAlbumListen();
   // Fetch release data
   const { data: release, isLoading } = useQuery({
@@ -172,6 +172,7 @@ export default function Release() {
       },
     }));
 
+    setFullListenMode(true);
     play(playerTracks[0], playerTracks);
   };
   if (isLoading) {

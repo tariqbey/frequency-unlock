@@ -126,7 +126,7 @@ export function FullListenPrompt({
 
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
           <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-          <span>Tracks will auto-advance. Skipping enabled.</span>
+          <span>Tracks will auto-advance. No skipping or fast-forwarding allowed.</span>
         </div>
       </motion.div>
     );
@@ -149,7 +149,7 @@ export function FullListenPrompt({
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground mb-4">
             To share your thoughts on "{releaseTitle}", listen to the complete album
-            without skipping. This ensures meaningful engagement from dedicated listeners.
+            without skipping or fast-forwarding. This ensures meaningful engagement from dedicated listeners.
           </p>
 
           <div className="flex items-center gap-3 mb-4 text-xs sm:text-sm text-muted-foreground">

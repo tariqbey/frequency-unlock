@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import { TrackCommentaryDialog } from "@/components/release/TrackCommentaryDialog";
 import { cn } from "@/lib/utils";
 import {
@@ -22,7 +23,11 @@ import {
   Repeat1,
   Heart,
   Quote,
+  Lock,
+  Headphones,
 } from "lucide-react";
+
+const PREVIEW_LIMIT_SECONDS = 40;
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds)) return "0:00";
@@ -40,7 +45,10 @@ export function FullPlayer() {
     volume,
     isMuted,
     isExpanded,
+    isFullListenMode,
     repeatMode,
+    hasUnlockedCurrentRelease,
+    previewLimitReached,
     pause,
     resume,
     next,
@@ -73,7 +81,12 @@ export function FullPlayer() {
 
   if (!currentTrack || !isExpanded) return null;
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // For preview mode, cap the displayed duration at 40s
+  const effectiveDuration = hasUnlockedCurrentRelease ? duration : Math.min(duration, PREVIEW_LIMIT_SECONDS);
+  const progress = effectiveDuration > 0 ? (Math.min(currentTime, effectiveDuration) / effectiveDuration) * 100 : 0;
+
+  const skipDisabled = isFullListenMode;
+  const seekDisabled = isFullListenMode;
 
   return (
     <>
@@ -101,7 +114,9 @@ export function FullPlayer() {
             <ChevronDown className="w-7 h-7" />
           </Button>
           <div className="text-center flex-1">
-            <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Now Playing</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
+              {isFullListenMode ? "Full Album Mode" : hasUnlockedCurrentRelease ? "Now Playing" : "Preview"}
+            </p>
             <p className="text-sm font-medium text-foreground/80 mt-0.5 truncate px-4">{currentTrack.release.title}</p>
           </div>
           <Button
@@ -118,6 +133,22 @@ export function FullPlayer() {
             />
           </Button>
         </div>
+
+        {/* Full Listen Mode indicator */}
+        {isFullListenMode && (
+          <div className="relative z-10 mx-6 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+            <Headphones className="w-4 h-4 text-primary animate-pulse" />
+            <span className="text-xs text-primary font-medium">No skipping — listen all the way through to unlock comments</span>
+          </div>
+        )}
+
+        {/* Preview badge */}
+        {!hasUnlockedCurrentRelease && !isFullListenMode && (
+          <div className="relative z-10 mx-6 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-muted-foreground/10">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">40-second preview • Donate to unlock full album</span>
+          </div>
+        )}
 
         {/* Album art - centered circular */}
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
@@ -178,28 +209,40 @@ export function FullPlayer() {
               value={[progress]}
               max={100}
               step={0.1}
-              onValueChange={([val]) => seek((val / 100) * duration)}
-              className="cursor-pointer"
+              onValueChange={([val]) => {
+                if (!seekDisabled) {
+                  seek((val / 100) * effectiveDuration);
+                }
+              }}
+              className={cn("cursor-pointer", seekDisabled && "opacity-50 cursor-not-allowed")}
+              disabled={seekDisabled}
             />
             <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+              <span>{formatTime(Math.min(currentTime, effectiveDuration))}</span>
+              <span>{formatTime(effectiveDuration)}</span>
             </div>
           </div>
 
           {/* Controls */}
           <div className="flex items-center justify-center gap-5 sm:gap-7 mb-6">
-            <Button variant="ghost" size="icon" className="w-10 h-10 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" className="w-10 h-10 text-muted-foreground hover:text-foreground" disabled={skipDisabled}>
               <Shuffle className="w-4 h-4" />
             </Button>
 
-            <Button variant="ghost" size="icon" onClick={previous} className="w-12 h-12 text-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={previous}
+              className={cn("w-12 h-12 text-foreground", skipDisabled && "opacity-30 cursor-not-allowed")}
+              disabled={skipDisabled}
+            >
               <SkipBack className="w-5 h-5" fill="currentColor" />
             </Button>
 
             <button
               onClick={isPlaying ? pause : resume}
-              className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/40 hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+              disabled={previewLimitReached}
+              className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/40 hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               {isPlaying ? (
                 <Pause className="w-7 h-7" fill="currentColor" />
@@ -208,7 +251,13 @@ export function FullPlayer() {
               )}
             </button>
 
-            <Button variant="ghost" size="icon" onClick={next} className="w-12 h-12 text-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={next}
+              className={cn("w-12 h-12 text-foreground", skipDisabled && "opacity-30 cursor-not-allowed")}
+              disabled={skipDisabled}
+            >
               <SkipForward className="w-5 h-5" fill="currentColor" />
             </Button>
 
@@ -216,6 +265,7 @@ export function FullPlayer() {
               variant="ghost"
               size="icon"
               onClick={toggleRepeat}
+              disabled={isFullListenMode}
               className={cn("w-10 h-10", repeatMode !== 'off' ? "text-primary" : "text-muted-foreground hover:text-foreground")}
             >
               {repeatMode === 'one' ? (

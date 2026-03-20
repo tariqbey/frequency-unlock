@@ -23,6 +23,8 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+const PREVIEW_LIMIT_SECONDS = 40;
+
 export function MiniPlayer() {
   const {
     currentTrack,
@@ -32,6 +34,9 @@ export function MiniPlayer() {
     volume,
     isMuted,
     repeatMode,
+    isFullListenMode,
+    hasUnlockedCurrentRelease,
+    previewLimitReached,
     pause,
     resume,
     next,
@@ -45,7 +50,9 @@ export function MiniPlayer() {
 
   if (!currentTrack) return null;
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const effectiveDuration = hasUnlockedCurrentRelease ? duration : Math.min(duration, PREVIEW_LIMIT_SECONDS);
+  const progress = effectiveDuration > 0 ? (Math.min(currentTime, effectiveDuration) / effectiveDuration) * 100 : 0;
+  const skipDisabled = isFullListenMode;
 
   return (
     <motion.div
@@ -65,11 +72,14 @@ export function MiniPlayer() {
 
       {/* Progress bar at top - clickable for seeking */}
       <div 
-        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group z-10"
+        className={`absolute top-0 left-0 right-0 h-1 bg-muted ${isFullListenMode ? 'cursor-not-allowed' : 'cursor-pointer'} group z-10`}
         onClick={(e) => {
+          if (isFullListenMode) return;
           const rect = e.currentTarget.getBoundingClientRect();
           const percent = (e.clientX - rect.left) / rect.width;
-          seek(percent * duration);
+          const targetTime = percent * effectiveDuration;
+          if (!hasUnlockedCurrentRelease && targetTime >= PREVIEW_LIMIT_SECONDS) return;
+          seek(targetTime);
         }}
       >
         <motion.div
@@ -125,6 +135,7 @@ export function MiniPlayer() {
             size="icon"
             onClick={previous}
             className="hidden sm:flex"
+            disabled={skipDisabled}
           >
             <SkipBack className="w-4 h-4" />
           </Button>
@@ -134,6 +145,7 @@ export function MiniPlayer() {
             size="icon"
             onClick={isPlaying ? pause : resume}
             className="w-12 h-12"
+            disabled={previewLimitReached}
           >
             {isPlaying ? (
               <Pause className="w-5 h-5" />
@@ -147,6 +159,7 @@ export function MiniPlayer() {
             size="icon"
             onClick={next}
             className="hidden sm:flex"
+            disabled={skipDisabled}
           >
             <SkipForward className="w-4 h-4" />
           </Button>
