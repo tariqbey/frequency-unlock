@@ -72,11 +72,14 @@ export function MiniPlayer() {
 
       {/* Progress bar at top - clickable for seeking */}
       <div 
-        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group z-10"
+        className={`absolute top-0 left-0 right-0 h-1 bg-muted ${isFullListenMode ? 'cursor-not-allowed' : 'cursor-pointer'} group z-10`}
         onClick={(e) => {
+          if (isFullListenMode) return;
           const rect = e.currentTarget.getBoundingClientRect();
           const percent = (e.clientX - rect.left) / rect.width;
-          seek(percent * duration);
+          const targetTime = percent * effectiveDuration;
+          if (!hasUnlockedCurrentRelease && targetTime >= PREVIEW_LIMIT_SECONDS) return;
+          seek(targetTime);
         }}
       >
         <motion.div
