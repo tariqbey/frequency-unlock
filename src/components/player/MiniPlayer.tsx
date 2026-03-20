@@ -23,6 +23,8 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+const PREVIEW_LIMIT_SECONDS = 40;
+
 export function MiniPlayer() {
   const {
     currentTrack,
@@ -32,6 +34,9 @@ export function MiniPlayer() {
     volume,
     isMuted,
     repeatMode,
+    isFullListenMode,
+    hasUnlockedCurrentRelease,
+    previewLimitReached,
     pause,
     resume,
     next,
@@ -45,7 +50,9 @@ export function MiniPlayer() {
 
   if (!currentTrack) return null;
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const effectiveDuration = hasUnlockedCurrentRelease ? duration : Math.min(duration, PREVIEW_LIMIT_SECONDS);
+  const progress = effectiveDuration > 0 ? (Math.min(currentTime, effectiveDuration) / effectiveDuration) * 100 : 0;
+  const skipDisabled = isFullListenMode;
 
   return (
     <motion.div

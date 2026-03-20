@@ -137,6 +137,7 @@ function AppContent() {
       </BrowserRouter>
       <MiniPlayer />
       <FullPlayer />
+      <PreviewLimitOverlay />
       <MobileInstallPrompt />
     </>
   );
