@@ -126,7 +126,7 @@ export function FullListenPrompt({
 
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
           <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-          <span>Tracks will auto-advance. Skipping enabled.</span>
+          <span>Tracks will auto-advance. No skipping or fast-forwarding allowed.</span>
         </div>
       </motion.div>
     );
