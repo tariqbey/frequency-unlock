@@ -135,6 +135,7 @@ export function MiniPlayer() {
             size="icon"
             onClick={previous}
             className="hidden sm:flex"
+            disabled={skipDisabled}
           >
             <SkipBack className="w-4 h-4" />
           </Button>
@@ -144,6 +145,7 @@ export function MiniPlayer() {
             size="icon"
             onClick={isPlaying ? pause : resume}
             className="w-12 h-12"
+            disabled={previewLimitReached}
           >
             {isPlaying ? (
               <Pause className="w-5 h-5" />
@@ -157,6 +159,7 @@ export function MiniPlayer() {
             size="icon"
             onClick={next}
             className="hidden sm:flex"
+            disabled={skipDisabled}
           >
             <SkipForward className="w-4 h-4" />
           </Button>
