@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const PREVIEW_LIMIT_SECONDS = 40;
+
 interface Track {
   id: string;
   title: string;
@@ -32,6 +34,9 @@ interface PlayerContextType {
   repeatMode: RepeatMode;
   audioContext: AudioContext | null;
   analyser: AnalyserNode | null;
+  previewLimitReached: boolean;
+  hasUnlockedCurrentRelease: boolean;
+  unlockedReleases: Set<string>;
   play: (track: Track, queue?: Track[]) => void;
   pause: () => void;
   resume: () => void;
@@ -46,6 +51,8 @@ interface PlayerContextType {
   setRepeatMode: (mode: RepeatMode) => void;
   toggleRepeat: () => void;
   onTrackComplete: (callback: (trackId: string) => void) => void;
+  dismissPreviewPrompt: () => void;
+  refreshUnlockedReleases: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -187,6 +194,39 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off');
   const trackCompleteCallbackRef = useRef<((trackId: string) => void) | null>(null);
 
+  // Preview / donation state
+  const [previewLimitReached, setPreviewLimitReached] = useState(false);
+  const [unlockedReleases, setUnlockedReleases] = useState<Set<string>>(new Set());
+  const previewLimitTriggeredRef = useRef(false);
+
+  // Load unlocked releases (paid donations) for current user
+  const refreshUnlockedReleases = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setUnlockedReleases(new Set());
+      return;
+    }
+    const { data } = await supabase
+      .from("donations")
+      .select("release_id")
+      .eq("user_id", user.id)
+      .eq("status", "paid");
+    if (data) {
+      setUnlockedReleases(new Set(data.map(d => d.release_id)));
+    }
+  }, []);
+
+  // Load on mount and auth change
+  useEffect(() => {
+    refreshUnlockedReleases();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      refreshUnlockedReleases();
+    });
+    return () => subscription.unsubscribe();
+  }, [refreshUnlockedReleases]);
+
+  const hasUnlockedCurrentRelease = currentTrack ? unlockedReleases.has(currentTrack.release.id) : false;
+
   // Initialize audio element
   useEffect(() => {
     if (!audioRef.current) {
@@ -198,6 +238,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+
+      // 40-second preview limit enforcement
+      if (
+        !previewLimitTriggeredRef.current &&
+        currentTrack &&
+        !unlockedReleases.has(currentTrack.release.id) &&
+        audio.currentTime >= PREVIEW_LIMIT_SECONDS
+      ) {
+        previewLimitTriggeredRef.current = true;
+        audio.pause();
+        setPreviewLimitReached(true);
+        return;
+      }
+
       // Update media session position
       if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
         try {
@@ -236,7 +290,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       // Handle repeat modes
       if (repeatMode === 'one') {
-        // Repeat the same track
         audio.currentTime = 0;
         audio.play();
         return;
@@ -246,7 +299,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (currentIndex < queue.length - 1) {
         play(queue[currentIndex + 1], queue);
       } else if (repeatMode === 'all' && queue.length > 0) {
-        // Loop back to the first track
         play(queue[0], queue);
       } else {
         setIsPlaying(false);
@@ -269,9 +321,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
     };
-  }, [currentTrack, queue]);
+  }, [currentTrack, queue, unlockedReleases]);
 
-  // Setup Web Audio API for visualizations (does NOT route playback through AudioContext)
+  // Setup Web Audio API for visualizations
   const setupAudioContext = useCallback(async () => {
     if (!audioRef.current || audioContextRef.current) return;
 
@@ -286,21 +338,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.8;
 
-      // Use captureStream if available to avoid hijacking playback pipeline
-      // This keeps audio playing natively (even when screen is off) while still feeding the analyser
       const audioEl = audioRef.current as any;
       if (typeof audioEl.captureStream === 'function') {
         const stream = audioEl.captureStream();
         const source = audioContext.createMediaStreamSource(stream);
         source.connect(analyser);
-        // Do NOT connect analyser to destination — we don't want double audio
       } else if (typeof audioEl.mozCaptureStream === 'function') {
         const stream = audioEl.mozCaptureStream();
         const source = audioContext.createMediaStreamSource(stream);
         source.connect(analyser);
       }
-      // If captureStream is not available (e.g. iOS Safari), we skip wiring —
-      // the visualizer will just show idle state, but audio keeps playing in background.
 
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
@@ -311,6 +358,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(async (track: Track, newQueue?: Track[]) => {
     if (!audioRef.current) return;
+
+    // Reset preview limit for new track
+    previewLimitTriggeredRef.current = false;
+    setPreviewLimitReached(false);
 
     setCurrentTrack(track);
     setIsExpanded(true);
@@ -323,7 +374,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Get signed URL for private audio bucket
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("audio")
-      .createSignedUrl(track.audio_path, 3600); // 1 hour expiry
+      .createSignedUrl(track.audio_path, 3600);
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       console.error("Error getting signed URL:", signedUrlError);
@@ -332,10 +383,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     
     audioRef.current.src = signedUrlData.signedUrl;
     
-    // Setup audio context on first play (needs user interaction)
     await setupAudioContext();
     
-    // Resume audio context if suspended (iOS fix)
     if (audioContextRef.current?.state === 'suspended') {
       await audioContextRef.current.resume();
     }
@@ -352,8 +401,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resume = useCallback(async () => {
+    // Don't allow resuming past preview limit
+    if (previewLimitReached) return;
     try {
-      // Resume AudioContext if suspended (iOS resumes it on user interaction)
       if (audioContextRef.current?.state === 'suspended') {
         await audioContextRef.current.resume();
       }
@@ -361,27 +411,36 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error resuming:", err);
     }
-  }, []);
+  }, [previewLimitReached]);
 
   const next = useCallback(() => {
+    // Block skip in full listen mode
+    if (isFullListenMode) return;
+
     const currentIndex = queue.findIndex(t => t.id === currentTrack?.id);
     if (currentIndex < queue.length - 1) {
       play(queue[currentIndex + 1], queue);
     }
-  }, [currentTrack, queue, play]);
+  }, [currentTrack, queue, play, isFullListenMode]);
 
   const previous = useCallback(() => {
+    // Block skip in full listen mode
+    if (isFullListenMode) return;
+
     const currentIndex = queue.findIndex(t => t.id === currentTrack?.id);
     if (currentIndex > 0) {
       play(queue[currentIndex - 1], queue);
     }
-  }, [currentTrack, queue, play]);
+  }, [currentTrack, queue, play, isFullListenMode]);
 
   const seek = useCallback((time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-    }
-  }, []);
+    if (!audioRef.current) return;
+    // Block seeking in full listen mode
+    if (isFullListenMode) return;
+    // Don't allow seeking past preview limit for non-unlocked releases
+    if (currentTrack && !unlockedReleases.has(currentTrack.release.id) && time >= PREVIEW_LIMIT_SECONDS) return;
+    audioRef.current.currentTime = time;
+  }, [isFullListenMode, currentTrack, unlockedReleases]);
 
   const setVolume = useCallback((newVolume: number) => {
     setVolumeState(newVolume);
@@ -426,6 +485,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     trackCompleteCallbackRef.current = callback;
   }, []);
 
+  const dismissPreviewPrompt = useCallback(() => {
+    setPreviewLimitReached(false);
+  }, []);
+
   // Update media session when track or play state changes
   useEffect(() => {
     if (currentTrack) {
@@ -454,6 +517,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         repeatMode,
         audioContext: audioContextRef.current,
         analyser: analyserRef.current,
+        previewLimitReached,
+        hasUnlockedCurrentRelease,
+        unlockedReleases,
         play,
         pause,
         resume,
@@ -468,6 +534,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setRepeatMode,
         toggleRepeat,
         onTrackComplete,
+        dismissPreviewPrompt,
+        refreshUnlockedReleases,
       }}
     >
       {children}
