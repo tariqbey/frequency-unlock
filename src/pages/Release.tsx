@@ -172,6 +172,7 @@ export default function Release() {
       },
     }));
 
+    setFullListenMode(true);
     play(playerTracks[0], playerTracks);
   };
   if (isLoading) {
