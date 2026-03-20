@@ -149,7 +149,7 @@ export function FullListenPrompt({
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground mb-4">
             To share your thoughts on "{releaseTitle}", listen to the complete album
-            without skipping. This ensures meaningful engagement from dedicated listeners.
+            without skipping or fast-forwarding. This ensures meaningful engagement from dedicated listeners.
           </p>
 
           <div className="flex items-center gap-3 mb-4 text-xs sm:text-sm text-muted-foreground">
