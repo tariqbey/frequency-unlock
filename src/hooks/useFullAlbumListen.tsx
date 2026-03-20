@@ -176,14 +176,15 @@ export function FullAlbumListenProvider({ children }: { children: ReactNode }) {
   );
 
   const canSkip = useCallback(() => {
-    // Skipping is allowed even during full listen sessions
+    // Block skipping during full listen sessions
+    if (activeSession?.isActive) return false;
     return true;
-  }, []);
+  }, [activeSession]);
 
   const attemptSkip = useCallback(() => {
-    // Always allow skipping
+    if (activeSession?.isActive) return false;
     return true;
-  }, []);
+  }, [activeSession]);
 
   const getProgress = useCallback(() => {
     if (!activeSession) {
