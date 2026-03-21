@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const PREVIEW_LIMIT_SECONDS = 40;
+const PREVIEW_LIMIT_SECONDS = 60;
 
 interface Track {
   id: string;

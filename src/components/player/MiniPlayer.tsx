@@ -23,7 +23,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-const PREVIEW_LIMIT_SECONDS = 40;
+const PREVIEW_LIMIT_SECONDS = 60;
 
 export function MiniPlayer() {
   const {
