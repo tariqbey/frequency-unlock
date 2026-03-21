@@ -23,36 +23,7 @@ interface Release {
   };
 }
 
-// Dummy data used when no real releases are available
-const dummyReleases: Release[] = [
-  { id: "d1", title: "Lost in Paradise", type: "album", description: null, cover_art_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=400&fit=crop", published_at: null, artist: { id: "a1", name: "Luna Waves", image_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop" } },
-  { id: "d2", title: "Chill Out", type: "album", description: null, cover_art_url: "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400&h=400&fit=crop", published_at: null, artist: { id: "a2", name: "Prolestorhea", image_url: null } },
-  { id: "d3", title: "Smooth Jazz", type: "single", description: null, cover_art_url: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop", published_at: null, artist: { id: "a3", name: "Jazz Masters", image_url: null } },
-  { id: "d4", title: "Acoustic Evening", type: "ep", description: null, cover_art_url: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop", published_at: null, artist: { id: "a4", name: "Evening", image_url: null } },
-  { id: "d5", title: "Urban Beats", type: "album", description: null, cover_art_url: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop", published_at: null, artist: { id: "a5", name: "BeatMaker", image_url: null } },
-  { id: "d6", title: "Midnight Drive", type: "single", description: null, cover_art_url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop", published_at: null, artist: { id: "a6", name: "Neon Pulse", image_url: null } },
-];
-
-export default function Library() {
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const { data: releases, isLoading } = useQuery({
-    queryKey: ["releases"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("releases")
-        .select(`
-          id, title, type, description, cover_art_url, published_at,
-          artist:artists(id, name, image_url)
-        `)
-        .eq("is_published", true)
-        .order("published_at", { ascending: false });
-      if (error) throw error;
-      return data as unknown as Release[];
-    },
-  });
-
-  const allReleases = releases && releases.length > 0 ? releases : dummyReleases;
+  const allReleases = releases || [];
 
   const filtered = allReleases.filter(
     (r) =>
