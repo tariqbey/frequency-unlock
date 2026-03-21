@@ -27,7 +27,7 @@ import {
   Headphones,
 } from "lucide-react";
 
-const PREVIEW_LIMIT_SECONDS = 40;
+const PREVIEW_LIMIT_SECONDS = 60;
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds)) return "0:00";
