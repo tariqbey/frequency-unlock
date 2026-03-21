@@ -23,6 +23,25 @@ interface Release {
   };
 }
 
+export default function Library() {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: releases, isLoading } = useQuery({
+    queryKey: ["releases"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("releases")
+        .select(`
+          id, title, type, description, cover_art_url, published_at,
+          artist:artists(id, name, image_url)
+        `)
+        .eq("is_published", true)
+        .order("published_at", { ascending: false });
+      if (error) throw error;
+      return data as unknown as Release[];
+    },
+  });
+
   const allReleases = releases || [];
 
   const filtered = allReleases.filter(
