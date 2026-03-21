@@ -134,11 +134,11 @@ function AppContent() {
           <Route path="/artist-signup" element={<ArtistSignup />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <MiniPlayer />
+        <FullPlayer />
+        <PreviewLimitOverlay />
+        <MobileInstallPrompt />
       </BrowserRouter>
-      <MiniPlayer />
-      <FullPlayer />
-      <PreviewLimitOverlay />
-      <MobileInstallPrompt />
     </>
   );
 }
